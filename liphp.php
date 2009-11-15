@@ -441,7 +441,23 @@ class Expression {
         $tokens = array();
         $didClose = FALSE;
 
+        $quoteLevel = 0;
+        $quoteSymbol = new Symbol;
+        $quoteSymbol->name = 'quote';
+
+        $append = FALSE;
+
         for (;;) {
+            // append any expressions to our list
+            if ($append !== FALSE) {
+                while ($quoteLevel > 0) {
+                    $append = array($quoteSymbol, $append);
+                    $quoteLevel--;
+                }
+                $tokens []= $append;
+                $append = FALSE;
+            }
+
             // end reached?
             if ($pos >= $len) {
                 break;
@@ -475,10 +491,18 @@ class Expression {
             // open paren
             if ($s[$pos] == '(') {
                 $p = $pos+1;
-                $tokens []= self::Parse($s, $p);
+                $append = self::Parse($s, $p);
                 $pos = $p;
                 continue;
             }
+
+            // open paren
+            if ($s[$pos] == "'") {
+                $quoteLevel++;
+                $pos++;
+                continue;
+            }
+
 
             // from here on i'll need an actual substring,
             // because the regexp functions do not allow matching
@@ -487,14 +511,14 @@ class Expression {
 
             // consume strings
             if (preg_match('/^"((?:\\\"|[^"])*)"/s', $sub, $m)) {
-                $tokens []= stripslashes($m[1]);
+                $append = stripslashes($m[1]);
                 $pos += strlen($m[1]) + 2;
                 continue;
             }
 
             // consume integers
             if (preg_match('/^([0-9]+)/s', $sub, $m)) {
-                $tokens []= (int) $m[1];
+                $append = (int) $m[1];
                 $pos += strlen($m[1]);
                 continue;
             }
@@ -504,13 +528,13 @@ class Expression {
                 $sname = $m[1];
                 $supper = strtoupper($sname);
                 if ($supper == 'T') {
-                    $tokens []= TRUE;
+                    $append = TRUE;
                 } elseif ($supper == 'NIL') {
-                    $tokens []= NULL;
+                    $append = NULL;
                 } else {
                     $symbol = new Symbol;
                     $symbol->name = $sname;
-                    $tokens []= $symbol;
+                    $append = $symbol;
                 }
 
                 $pos += strlen($sname);
