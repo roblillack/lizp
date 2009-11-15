@@ -21,11 +21,8 @@ class Lisp {
         return $sexp;
     }
 
-    public function Evaluate($sexp, $onlyLists = FALSE) {
+    public function Evaluate($sexp) {
         if ($sexp instanceof Symbol) {
-            if ($onlyLists) {
-                return $sexp;
-            }
             if (($r = @$this->_environment[$sexp->name]) !== NULL) {
                 return $r === FALSE ? NULL : $r;
             }
@@ -42,7 +39,7 @@ class Lisp {
         $args = array_slice($sexp, 1);
 
         if (is_array($first)) {
-            $evald = $this->Evaluate($first, TRUE);
+            $evald = $this->Evaluate($first);
             //echo Expression::Render($first) . " ~~> " . Expression::Render($evald) . "\n";
             $first = $evald;
         }
@@ -105,7 +102,7 @@ class Lisp {
         foreach ($lambda->expressions as $e) {
             $applied = $lambda->arguments === NULL ? $e : $this->Apply($e, $lambda->arguments, $args);
             //echo Expression::Render($e) . " ==> " . Expression::Render($applied) . "\n";
-            $r = $this->Evaluate($applied, TRUE);
+            $r = $this->Evaluate($applied);
         }
         return $r;
     }

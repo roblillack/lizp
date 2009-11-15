@@ -41,7 +41,7 @@
 (defun zehn () 10)
 (println (zehn))
 
-(defun p2 () println)
+(defun p2 () (quote println))
 (defun p3 () (p2))
 ((p3) "blabla")
 
