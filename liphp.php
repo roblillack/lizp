@@ -214,7 +214,13 @@ class Lisp {
             throw new Exception("syntax (EVAL <str>)");
         }
 
-        return $this->Evaluate(Expression::Parse($args[0]));
+        $expr = Expression::Parse($args[0]);
+        if (count($expr) > 1) {
+            throw new Exception("Error: Multiple expressions given in " .
+                                Expression::Render($arg[0]));
+        }
+
+        return $this->Evaluate(@$expr[0]);
     }
 
     private static function _parse() {
@@ -223,7 +229,13 @@ class Lisp {
             throw new Exception("Syntax Error: (PARSE <string>)");
         }
 
-        return Expression::Parse($args[0]);
+        $expr = Expression::NewParse($args[0]);
+        if (count($expr) > 1) {
+            throw new Exception("Error: Multiple expressions given in " .
+                                Expression::Render($arg[0]));
+        }
+
+        return @$expr[0];
     }
 
     private function special_form_eq($args) {
@@ -424,132 +436,106 @@ class Expression {
         return '<' . get_class($expr) . '>';
     }
 
-    public static function Parse($str) {
-        if (is_array($str)) {
-            $tokens = $str;
+    public static function Parse(&$s, &$position = NULL) {
+        if ($position === NULL) {
+            $pos = $position = 0;
         } else {
-            $tokens = self::Lex($str);
+            $pos = $position;
         }
-        //self::DumpTokens($tokens);
+        $len = strlen($s);
+        $tokens = array();
+        $didClose = FALSE;
 
-        if (($count = count($tokens)) > 1) {
-            if ($tokens[0][0] != 'PAREN' || $tokens[$count - 1][0] != 'PAREN' ||
-                $tokens[0][1] != '(' || $tokens[$count - 1][1] != ')') {
-                echo "Unbalanced Parenthesises in {$str}\n";
-                return new self(self::TYPE_LIST, array());
-            }
-            $open = 0;
-            $elements = array();
-            $start = 1;
-            for ($i = $start; $i < $count; $i++) {
-                $t = $tokens[$i];
-                if ($t[0] == 'PAREN') {
-                    $open += $t[1] == '(' ? 1 : -1;
-                }
-                if (!$open) {
-                    //echo "FOUND EXPRESSION:\n";
-                    //self::DumpTokens(array_slice($tokens, $start, $i-$start+1));
-                    $elements []= self::Parse(array_slice($tokens, $start, $i-$start+1));
-                    $start = $i+1;
-                }
-            }
-
-            return empty($elements) ? NULL : $elements;
-        }
-
-        if ($count == 0) {
-            return NULL;
-        }
-
-        list($type, $value) = $tokens[0];
-        switch ($type) {
-        case 'INTEGER':
-            return (int) $value;
-        case 'STRING':
-            return (string) $value;
-        case 'T':
-            return TRUE;
-        case 'NIL':
-            return NULL;
-        default:
-            $r = new Symbol();
-            $r->name = function_exists('mb_strtolower') ? mb_strtolower($value) : strtolower($value);
-            return $r;
-            //return new self(self::TYPE_SYMBOL, mb_strtolower($value));
-        }
-    }
-
-    public static function ParseFile($filename) {
-        return self::Parse('(' . file_get_contents($filename) . ')');
-    }
-
-    public static function Lex($str) {
-        $tokens = array($str);
         for (;;) {
-            //self::DumpTokens($tokens);
-            foreach ($tokens as $i => $txt) {
-                if (is_array($txt)) {
-                    continue;
-                }
-                if (preg_match('/^\s*$/', $txt, $m)) {
-                    $tokens = array_merge(array_slice($tokens, 0, $i),
-                                          array_slice($tokens, $i + 1));
-                    continue 2;
-                }
-                if (preg_match('/^\s*([\(\)\[\]\{\}])\s*(.*)$/s', $txt, $m)) {
-                    $tokens = array_merge(array_slice($tokens, 0, $i),
-                                          array(array('PAREN', $m[1]), $m[2]),
-                                          array_slice($tokens, $i + 1));
-                    continue 2;
-                }
-                if (preg_match('/^\s*"((?:\\\"|[^"])*)"\s*(.*)$/s', $txt, $m)) {
-                    $tokens = array_merge(array_slice($tokens, 0, $i),
-                                          array(array('STRING', stripslashes($m[1])), $m[2]),
-                                          array_slice($tokens, $i + 1));
-                    continue 2;
-                }
-                if (preg_match('/^\s*([0-9]+)\s*(.*?)$/is', $txt, $m)) {
-                    $tokens = array_merge(array_slice($tokens, 0, $i),
-                                          array(array('INTEGER', $m[1]), $m[2]),
-                                          array_slice($tokens, $i + 1));
-                    continue 2;
-                }
-                if (preg_match('/^\s*t\s*(.*)$/is', $txt, $m)) {
-                    $tokens = array_merge(array_slice($tokens, 0, $i),
-                                          array(array('T', 1), $m[1]),
-                                          array_slice($tokens, $i + 1));
-                    continue 2;
-                }
-                if (preg_match('/^\s*nil\s*(.*)$/is', $txt, $m)) {
-                    $tokens = array_merge(array_slice($tokens, 0, $i),
-                                          array(array('NIL', 1), $m[1]),
-                                          array_slice($tokens, $i + 1));
-                    continue 2;
-                }
-                if (preg_match('/^\s*([^0-9][^\s\(\)\[\]\{\}]*)\s*(.*)$/is', $txt, $m)) {
-                    $tokens = array_merge(array_slice($tokens, 0, $i),
-                                          array(array('SYMBOL', $m[1]), $m[2]),
-                                          array_slice($tokens, $i + 1));
-                    continue 2;
-                }
-                throw new Exception("Unknown Token: {$txt}");
+            // end reached?
+            if ($pos >= $len) {
+                break;
             }
-            break;
-        }
-        return $tokens;
-    }
 
-    public static function DumpTokens($tokens) {
-        foreach ($tokens as $t) {
-            if (is_string($t)) {
-                echo "* {$t}\n";
+            // closing?
+            if ($s[$pos] == ')') {
+                if ($position === 0) {
+                    throw new Exception("Missing (!");
+                }
+                $didClose = TRUE;
+                $pos++;
+                break;
+            }
+
+            // consume whitespace
+            if (preg_match('/\s/', $s[$pos])) {
+                $pos++;
                 continue;
             }
-            list($type, $value) = $t;
-            echo "{$type}: {$value}\n";
+
+            // consume comments
+            if ($s[$pos] == ';') {
+                if (($nl = strpos($s, "\n", $pos)) !== FALSE) {
+                    $pos = $nl;
+                }
+                $pos++;
+                continue;
+            }
+
+            // open paren
+            if ($s[$pos] == '(') {
+                $p = $pos+1;
+                $tokens []= self::Parse($s, $p);
+                $pos = $p;
+                continue;
+            }
+
+            // from here on i'll need an actual substring,
+            // because the regexp functions do not allow matching
+            // at a specified offset only. :(
+            $sub = substr($s, $pos);
+
+            // consume strings
+            if (preg_match('/^"((?:\\\"|[^"])*)"/s', $sub, $m)) {
+                $tokens []= stripslashes($m[1]);
+                $pos += strlen($m[1]) + 2;
+                continue;
+            }
+
+            // consume integers
+            if (preg_match('/^([0-9]+)/s', $sub, $m)) {
+                $tokens []= (int) $m[1];
+                $pos += strlen($m[1]);
+                continue;
+            }
+
+            // consume symbols
+            if (preg_match('/^([^0-9][^\s\(\)\[\]\{\}]*)/s', $sub, $m)) {
+                $sname = $m[1];
+                $supper = strtoupper($sname);
+                if ($supper == 'T') {
+                    $tokens []= TRUE;
+                } elseif ($supper == 'NIL') {
+                    $tokens []= NULL;
+                } else {
+                    $symbol = new Symbol;
+                    $symbol->name = $sname;
+                    $tokens []= $symbol;
+                }
+
+                $pos += strlen($sname);
+                continue;
+            }
+
+            throw new Exception("Unexpected character at pos {$pos}: {$s[$pos]}");
         }
-        echo "\n";
+
+        if ($position !== 0 && !$didClose) {
+            throw new Exception("Missing )!");
+        }
+        $position = $pos;
+        return empty($tokens) ? NULL : $tokens;
     }
+}
+
+class StrStream {
+    public $contents = '';
+    public $pos = 0;
 }
 
 class Lambda extends Expression {
@@ -567,7 +553,9 @@ if ($_SERVER['argc'] < 2) {
 }
 
 $start = microtime(TRUE);
-$expressions = Expression::ParseFile($_SERVER['argv'][1]);
+//$expressions = Expression::ParseFile($_SERVER['argv'][1]);
+$input = file_get_contents($_SERVER['argv'][1]);
+$expressions = Expression::Parse($input);
 echo "parsed {$_SERVER['argv'][1]} in " . number_format(microtime(TRUE)-$start, 4) . "s\n";
 $env = new Lisp();
 
