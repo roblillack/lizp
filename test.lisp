@@ -29,8 +29,8 @@
 (println bla)
 
 (defun fib (n)
-  (if (eq n 0) 1
-    (if (eq n 1) 1
+  (if (eq? n 0) 1
+    (if (eq? n 1) 1
       (+ (fib (- n 1))
          (fib (- n 2))))))
 
@@ -47,3 +47,7 @@
 
 (define getprintln (lambda () (quote println)))
 ((lambda (name) ((getprintln) "huhu, " name "!")) "rob")
+
+
+(let ((bla "blA") (blub "blubb!"))
+  (println bla " -- " blub))

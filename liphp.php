@@ -2,33 +2,22 @@
 class Lisp {
     private $_environment = array();
 
-    public function Apply($sexp, $args, $values, $depth = 0) {
-
+    public function Apply($sexp, $args, $values) {
         if (is_array($sexp)) {
-            //echo "\nLIST: " . $sexp->ToString() ." (depth: {$depth})\n";
             $exps = array();
             foreach ($sexp as $v) {
-                $exps []= $this->Apply($v, $args, $values, $depth + 1);
+                $exps []= $this->Apply($v, $args, $values);
             }
-            //echo "TO  : " . $r->ToString() ."\n";
             return $exps;
         } elseif ($sexp instanceof Symbol) {
-
-            //echo "\n";
-            //echo "ARGS: " . $args->ToString() . "\n";
-            //echo "VALS: " . $vals->ToString() . "\n";
-            //echo "SYMB: " . $sexp->ToString() . "\n";
             foreach ($args as $i => $arg) {
-                if ($arg instanceof Symbol &&
-                    $sexp->name == $arg->name) {
+                if ($arg instanceof Symbol && $sexp->name == $arg->name) {
                     $r = $this->Evaluate($values[$i]);
-                    //echo "RETN: " . $r->ToString() . "\n";
                     return $r;
                 }
             }
         }
 
-        //echo "RETN: " . $sexp->ToString() . "\n";
         return $sexp;
     }
 
@@ -54,7 +43,7 @@ class Lisp {
 
         if (is_array($first)) {
             $evald = $this->Evaluate($first, TRUE);
-            echo Expression::Render($first) . " ~~> " . Expression::Render($evald) . "\n";
+            //echo Expression::Render($first) . " ~~> " . Expression::Render($evald) . "\n";
             $first = $evald;
         }
 
@@ -69,6 +58,7 @@ class Lisp {
             case 'eq?':    return self::special_form_eq($args);
             case 'if':     return self::special_form_if($args);
             case 'lambda': return self::special_form_lambda($args);
+            case 'let':    return self::special_form_let($args);
             case 'quote':  return self::special_form_quote($args);
             case 'unless': return self::special_form_unless($args);
             case 'when':   return self::special_form_when($args);
@@ -113,7 +103,7 @@ class Lisp {
 
         $r = NULL;
         foreach ($lambda->expressions as $e) {
-            $applied = $lambda->parameters === NULL ? $e : $this->Apply($e, $lambda->parameters, $args);
+            $applied = $lambda->arguments === NULL ? $e : $this->Apply($e, $lambda->arguments, $args);
             //echo Expression::Render($e) . " ==> " . Expression::Render($applied) . "\n";
             $r = $this->Evaluate($applied, TRUE);
         }
@@ -326,7 +316,7 @@ class Lisp {
         }
 
         $lambda = new Lambda;
-        $lambda->parameters = empty($args[1]) ? NULL : $args[1];
+        $lambda->arguments = empty($args[1]) ? NULL : $args[1];
         $lambda->expressions = array_slice($args, 2);
 
         $this->_environment[$args[0]->name] = $lambda;
@@ -342,16 +332,38 @@ class Lisp {
         return $r;
     }
 
+    private function special_form_let($args) {
+        if (!(is_array(@$args[0]) || @$args[0] === NULL || @$args[0] === FALSE)) {
+            throw new Exception("Syntax Error: (LET (<values>*) <expr>*)");
+        }
+
+        $lambda = new Lambda;
+        $lambda->arguments = array();
+        $expressions = array($lambda);
+
+        foreach ($args[0] as $keyval) {
+            if (!is_array($keyval) || !($keyval[0] instanceof Symbol)) {
+                trigger_error("Ignoring " . Expression::Render($keyval) . " in (let) directive");
+            }
+            $lambda->arguments []= $keyval[0];
+            $expressions []= $keyval[1];
+        }
+
+        $lambda->expressions = array_slice($args, 1);
+
+        return $this->Evaluate($expressions);
+    }
+
     private function special_form_lambda($args) {
-        if (!(is_array(@$args[1]) || @$args[1] === NULL || @$args[1] === FALSE)) {
+        if (!(is_array(@$args[0]) || @$args[0] === NULL || @$args[0] === FALSE)) {
             throw new Exception("Syntax Error: (LAMBDA (<params>*) <expr>*)");
         }
 
         $lambda = new Lambda;
-        $lambda->parameters = empty($args[0]) ? NULL : $args[0];
+        $lambda->arguments = empty($args[0]) ? NULL : $args[0];
         $lambda->expressions = array_slice($args, 1);
 
-        return new $lambda;
+        return $lambda;
     }
 
     private function special_form_quote($args) {
