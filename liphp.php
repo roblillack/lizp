@@ -386,14 +386,6 @@ class Lisp {
 }
 
 class Expression {
-    const TYPE_NONE = 0;
-    const TYPE_INTEGER = 1;
-    const TYPE_STRING = 2;
-    const TYPE_SYMBOL = 3;
-    const TYPE_LIST = 4;
-    const TYPE_FN = 5;
-    const TYPE_T = 6;
-    const TYPE_OBJECT = 7;
 
     public static function Render($expr) {
         if ($expr === NULL || $expr === FALSE ||
@@ -430,56 +422,6 @@ class Expression {
         }
 
         return '<' . get_class($expr) . '>';
-    }
-
-    public function ToPHP() {
-        switch ($this->type) {
-        case self::TYPE_INTEGER:
-            return (int) $this->value;
-        case self::TYPE_T:
-            return TRUE;
-        case self::TYPE_LIST:
-            if (empty($this->value)) {
-                return NULL;
-            }
-            $list = array();
-            foreach ($this->value as $v) {
-                $list []= $v->ToPHP();
-            }
-            return $list;
-        case self::TYPE_SYMBOL:
-        case self::TYPE_STRING:
-            return (string) $this->value;
-        default:
-            return $this->value;
-        }
-    }
-
-    private static function FindExpression(&$tokens, $i = 0) {
-        if ($tokens[$i][0] != 'PAREN') {
-            return array($tokens[$i]);
-        }
-
-        if ($tokens[$i][0] == 'PAREN' &&
-            $tokens[$i][1] !== '(') {
-            return array();
-        }
-
-        $open = 0;
-        $count = count($tokens);
-        for ($j = $i; $j < $count; $j++) {
-            $t = $tokens[$j];
-            if ($t[0] != 'PAREN') {
-                continue;
-            }
-            $open += $t[1] == '(' ? 1 : -1;
-            if (!$open) {
-                echo "FOUND EXPRESSION:\n";
-                self::DumpTokens(array_slice($tokens, $i, $j - $i + 1));
-                return array_slice($tokens, $i, $j - $i + 1);
-            }
-        }
-        return array();
     }
 
     public static function Parse($str) {
@@ -619,25 +561,11 @@ class Symbol extends Expression {
     public $name = NULL;
 }
 
-
-/*
-$ast = new Expression(Expression::TYPE_LIST, array(
-                          new Expression(Expression::TYPE_SYMBOL, '+'),
-                          new Expression(Expression::TYPE_INTEGER, 1),
-                          new Expression(Expression::TYPE_INTEGER, 2)));
-
-echo $ast->ToString() . ' --> ' . $ast->Evaluate()->ToString() . "\n";
-*/
-
 if ($_SERVER['argc'] < 2) {
     echo "syntax: {$_SERVER['argv'][0]} FILE\n";
     exit(1);
 }
 
-//Expression::DumpTokens(Expression::Lex($_SERVER['argv'][1]));
-
-//Expression::DumpTokens(Expression::Lex(file_get_contents($_SERVER['argv'][1])));
-//exit(0);
 $start = microtime(TRUE);
 $expressions = Expression::ParseFile($_SERVER['argv'][1]);
 echo "parsed {$_SERVER['argv'][1]} in " . number_format(microtime(TRUE)-$start, 4) . "s\n";
@@ -646,7 +574,6 @@ $env = new Lisp();
 $start = microtime(TRUE);
 
 foreach ($expressions as $expr) {
-    //echo $expr->ToString() . "\n";
     $env->Evaluate($expr);
 }
 
