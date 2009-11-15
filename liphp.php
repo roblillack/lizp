@@ -533,11 +533,6 @@ class Expression {
     }
 }
 
-class StrStream {
-    public $contents = '';
-    public $pos = 0;
-}
-
 class Lambda extends Expression {
     public $arguments = NULL;
     public $expressions = array();
