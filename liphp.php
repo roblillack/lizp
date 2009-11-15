@@ -376,13 +376,11 @@ class Lisp {
     }
 
     private function special_form_quote($args) {
-        if (!(@$args[0] instanceof Symbol)) {
+        if (count($args) != 1) {
             throw new Exception("Syntax Error: (QUOTE <expr>)");
         }
 
-        $expr = new Symbol;
-        $expr->name = $args[0]->name;
-        return $expr;
+        return $args[0];
     }
 
     private function special_form_dump($args) {
