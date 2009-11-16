@@ -22,12 +22,22 @@ class Lisp {
                 $expandNext = FALSE;
             }
             return $exps;
-        } elseif ($sexp instanceof Symbol) {
-            foreach ($args as $i => $arg) {
-                if ($arg instanceof Symbol && $sexp->name == $arg->name) {
-                    $r = $this->Evaluate($values[$i]);
-                    return $r;
+        }
+
+        if (!($sexp instanceof Symbol)) {
+            return $sexp;
+        }
+
+        foreach ($args as $i => $arg) {
+            if ($arg instanceof Symbol && $sexp->name == $arg->name) {
+                if (@$args[$i-1]->name == '&rest') {
+                    $vals = array();
+                    foreach (array_slice($values, $i - 1) as $v) {
+                        $vals []= $this->Evaluate($v);
+                    }
+                    return array(Symbol::Make('quote'), $vals);
                 }
+                return $this->Evaluate($values[$i]);
             }
         }
 
@@ -366,6 +376,8 @@ class Lisp {
         $lambda->expressions = array_slice($args, 2);
 
         $this->_environment[$args[0]->name] = $lambda;
+
+        return Symbol::Make($args[0]->name);
     }
 
     private function special_form_do($args) {
@@ -441,7 +453,7 @@ class Expression {
             return 't';
         }
 
-        if (is_int($expr)) {
+        if (is_int($expr) || is_double($expr)) {
             return (string) $expr;
         }
 
@@ -451,10 +463,21 @@ class Expression {
 
         if (is_array($expr)) {
             $out = array();
+            $space = FALSE;
             foreach ($expr as $e) {
+                if ($space) $out []= ' ';
                 $out []= self::Render($e);
+                $space = !($e instanceof Tilde || $e instanceof AtSign);
             }
-            return '(' .  implode(' ', $out) . ')';
+            return '(' .  implode('', $out) . ')';
+        }
+
+        if ($expr instanceof Tilde) {
+            return '~';
+        }
+
+        if ($expr instanceof AtSign) {
+            return '@';
         }
 
         if ($expr instanceof Symbol) {
@@ -462,7 +485,19 @@ class Expression {
         }
 
         if ($expr instanceof Lambda) {
-            return '<lambda:' . self::Render($expr->arguments) . '>';
+            $txt = '<lambda:' . self::Render($expr->arguments) . '>';
+            foreach ($expr->expressions as $e) {
+                $txt .= "\n  " .self::Render($e);
+            }
+            return $txt;
+        }
+
+        if ($expr instanceof Macro) {
+            $txt = '<macro:' . self::Render($expr->arguments) . '>';
+            foreach ($expr->expressions as $e) {
+                $txt .= "\n  " .self::Render($e);
+            }
+            return $txt;
         }
 
         return '<' . get_class($expr) . '>';
@@ -488,9 +523,39 @@ class Expression {
             // append any expressions to our list
             if ($append !== FALSE) {
                 while ($quoteLevel > 0) {
-                    $append = array($quoteSymbol, $append);
                     $quoteLevel--;
+
+                    // simple expressions are just quoted
+                    if (!is_array($append)) {
+                        $append = array($quoteSymbol, $append);
+                        continue;
+                    }
+
+                    // okay, we need to dive into the list
+                    // to check for tildes
+                    $quotedAppend = array();
+                    $nextUnquoted = FALSE;
+                    $didUnquoteSomething = FALSE;
+                    foreach ($append as $i) {
+                        if ($i instanceof Tilde) {
+                            $nextUnquoted = TRUE;
+                            continue;
+                        }
+                        if ($nextUnquoted) {
+                            $quotedAppend []= $i;
+                            $nextUnquoted = FALSE;
+                            $didUnquoteSomething = TRUE;
+                        } else {
+                            $quotedAppend []= array($quoteSymbol, $i);
+                        }
+                    }
+                    if ($didUnquoteSomething) {
+                        $append = array($quoteSymbol, $quotedAppend);
+                    } else {
+                        $append = array($quoteSymbol, $append);
+                    }
                 }
+
                 $tokens []= $append;
                 $append = FALSE;
             }
@@ -533,13 +598,26 @@ class Expression {
                 continue;
             }
 
-            // open paren
+            // quote
             if ($s[$pos] == "'") {
                 $quoteLevel++;
                 $pos++;
                 continue;
             }
 
+            // tilde
+            if ($s[$pos] == "~") {
+                $append = new Tilde;
+                $pos++;
+                continue;
+            }
+
+            // tilde
+            if ($s[$pos] == "@") {
+                $append = new AtSign;
+                $pos++;
+                continue;
+            }
 
             // from here on i'll need an actual substring,
             // because the regexp functions do not allow matching
@@ -596,6 +674,19 @@ class Lambda extends Expression {
 
 class Symbol extends Expression {
     public $name = NULL;
+
+    public static function Make($name) {
+        $r = new self;
+        $r->name = $name;
+        return $r;
+    }
+}
+
+class Tilde extends Expression {}
+class AtSign extends Expression {}
+class Macro extends Expression {
+    public $arguments = NULL;
+    public $expressions = array();
 }
 
 if ($_SERVER['argc'] < 2) {
