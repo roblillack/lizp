@@ -5,8 +5,21 @@ class Lisp {
     public function Apply($sexp, $args, $values) {
         if (is_array($sexp)) {
             $exps = array();
+            $expandNext = FALSE;
             foreach ($sexp as $v) {
-                $exps []= $this->Apply($v, $args, $values);
+                if ($v instanceof AtSign) {
+                    $expandNext = TRUE;
+                    continue;
+                }
+                $r = $this->Apply($v, $args, $values);
+                if ($expandNext && is_array($r) &&
+                    @$r[0] instanceof Symbol && $r[0]->name == 'quote' &&
+                    is_array(@$r[1])) {
+                    $exps = array_merge($exps, $r[1]);
+                } else {
+                    $exps []= $r;
+                }
+                $expandNext = FALSE;
             }
             return $exps;
         } elseif ($sexp instanceof Symbol) {
@@ -65,9 +78,21 @@ class Lisp {
             // internal functions
             if (($fnName = @self::$_internalFunctions[$first->name]) !== NULL) {
                 $params = array();
+                $expandNext = FALSE;
                 foreach ($args as $v) {
-                    $params []= $this->Evaluate($v);
+                    if ($v instanceof AtSign) {
+                        $expandNext = TRUE;
+                        continue;
+                    }
+                    $r = $this->Evaluate($v);
+                    if ($expandNext && is_array($r)) {
+                        $params = array_merge($params, $r);
+                    } else {
+                        $params []= $r;
+                    }
+                    $expandNext = FALSE;
                 }
+
                 if (function_exists("self::{$fnName}")) {
                     return call_user_func_array("self::{$fnName}", $params);
                 } else {
@@ -78,9 +103,21 @@ class Lisp {
             // php functions
             if (function_exists($first->name)) {
                 $params = array();
+                $expandNext = FALSE;
                 foreach ($args as $v) {
-                    $params []= $this->Evaluate($v);
+                    if ($v instanceof AtSign) {
+                        $expandNext = TRUE;
+                        continue;
+                    }
+                    $r = $this->Evaluate($v);
+                    if ($expandNext && is_array($r)) {
+                        $params = array_merge($params, $r);
+                    } else {
+                        $params []= $r;
+                    }
+                    $expandNext = FALSE;
                 }
+
                 $r = call_user_func_array($first->name, $params);
                 if ($r === FALSE || (is_array($r) && empty($r))) {
                     $r = NULL;
