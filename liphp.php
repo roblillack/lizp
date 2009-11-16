@@ -70,19 +70,20 @@ class Lisp {
         if ($first instanceof Symbol) {
             // special forms
             switch ($first->name) {
-            case 'and':    return self::special_form_and($args);
-            case 'define': return self::special_form_define($args);
-            case 'defun':  return self::special_form_defun($args);
-            case 'do':     return self::special_form_do($args);
-            case 'dump':   return self::special_form_dump($args);
-            case 'eq?':    return self::special_form_eq($args);
-            case 'if':     return self::special_form_if($args);
-            case 'lambda': return self::special_form_lambda($args);
-            case 'let':    return self::special_form_let($args);
-            case 'quote':  return self::special_form_quote($args);
-            case 'unless': return self::special_form_unless($args);
-            case 'when':   return self::special_form_when($args);
-            case 'while':  return self::special_form_while($args);
+            case 'and':      return self::special_form_and($args);
+            case 'define':   return self::special_form_define($args);
+            case 'defmacro': return self::special_form_defmacro($args);
+            case 'defun':    return self::special_form_defun($args);
+            case 'do':       return self::special_form_do($args);
+            case 'dump':     return self::special_form_dump($args);
+            case 'eq?':      return self::special_form_eq($args);
+            case 'if':       return self::special_form_if($args);
+            case 'lambda':   return self::special_form_lambda($args);
+            case 'let':      return self::special_form_let($args);
+            case 'quote':    return self::special_form_quote($args);
+            case 'unless':   return self::special_form_unless($args);
+            case 'when':     return self::special_form_when($args);
+            case 'while':    return self::special_form_while($args);
             }
 
             // internal functions
@@ -160,6 +161,7 @@ class Lisp {
         '-'       => '_sub',
         '*'       => '_multiply',
         '/'       => '_divide',
+        'length'  => '_length',
         'parse'   => '_parse',
         'print'   => '_print',
         'println' => '_println',
@@ -251,6 +253,17 @@ class Lisp {
             }
         }
         return $sum;
+    }
+
+
+    private static function _length() {
+        $args = func_get_args();
+        if (count($args) !== 1 ||
+            !(is_array($args[0]) || $args[0] === NULL || $args[0] === FALSE)) {
+            throw new Exception("syntax: (LENGTH <list>)");
+        }
+
+        return is_array($args[0]) ? count($args[0]) : 0;
     }
 
     private function _eval() {
