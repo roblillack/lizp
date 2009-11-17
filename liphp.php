@@ -142,6 +142,24 @@ class Lisp {
             $lambda = $first;
         }
 
+        // it's macro expansion time!
+        if ($lambda instanceof Macro) {
+            $list = NULL;
+            foreach ($lambda->expressions as $e) {
+                // macro-expansion-time
+                $expanded = $this->Evaluate($e);
+                //echo Expression::Render($e) . " =MACROEXPAND=> " . Expression::Render($expanded) . "\n";
+                $applied = $lambda->arguments === NULL ? $expanded : $this->Apply($expanded, $lambda->arguments, $args);
+                //echo Expression::Render($expanded) . " =APPLY=> " . Expression::Render($applied) . "\n";
+                $list = array();
+                foreach ($applied as $i) {
+                    $list []= ($r = $this->Evaluate($i));
+                    //echo Expression::Render($i) . " =EVAL=> " . Expression::Render($r) . "\n";
+                }
+            }
+            return $this->Evaluate($list);
+        }
+
         if (!($lambda instanceof Lambda)) {
             throw new Exception("Unable to evaluate Expression: " . Expression::Render($sexp) .
                                 " because function name evaluates to " . Expression::Render($lambda));
@@ -391,6 +409,19 @@ class Lisp {
 
         $this->_environment[$args[0]->name] = $lambda;
 
+        return Symbol::Make($args[0]->name);
+    }
+
+    private function special_form_defmacro($args) {
+        if (!(@$args[0] instanceof Symbol) ||
+            !(is_array(@$args[1]) || @$args[1] === NULL || @$args[1] === FALSE)) {
+            throw new Exception("Syntax Error: (DEFMACRO <id> (<params>*) <expr>*)");
+        }
+
+        $lambda = new Macro;
+        $lambda->arguments = empty($args[1]) ? NULL : $args[1];
+        $lambda->expressions = array_slice($args, 2);
+        $this->_environment[$args[0]->name] = $lambda;
         return Symbol::Make($args[0]->name);
     }
 
