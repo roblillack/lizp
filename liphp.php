@@ -70,20 +70,21 @@ class Lisp {
         if ($first instanceof Symbol) {
             // special forms
             switch ($first->name) {
-            case 'and':      return self::special_form_and($args);
-            case 'define':   return self::special_form_define($args);
-            case 'defmacro': return self::special_form_defmacro($args);
-            case 'defun':    return self::special_form_defun($args);
-            case 'do':       return self::special_form_do($args);
-            case 'dump':     return self::special_form_dump($args);
-            case 'eq?':      return self::special_form_eq($args);
-            case 'if':       return self::special_form_if($args);
-            case 'lambda':   return self::special_form_lambda($args);
-            case 'let':      return self::special_form_let($args);
-            case 'quote':    return self::special_form_quote($args);
-            case 'unless':   return self::special_form_unless($args);
-            case 'when':     return self::special_form_when($args);
-            case 'while':    return self::special_form_while($args);
+            case 'and':        return self::special_form_and($args);
+            case 'define':     return self::special_form_define($args);
+            case 'defmacro':   return self::special_form_defmacro($args);
+            case 'defun':      return self::special_form_defun($args);
+            case 'do':         return self::special_form_do($args);
+            case 'dump':       return self::special_form_dump($args);
+            case 'eq?':        return self::special_form_eq($args);
+            case 'if':         return self::special_form_if($args);
+            case 'lambda':     return self::special_form_lambda($args);
+            case 'let':        return self::special_form_let($args);
+            case 'quasiquote': return self::special_form_quasiquote($args);
+            case 'quote':      return self::special_form_quote($args);
+            case 'unless':     return self::special_form_unless($args);
+            case 'when':       return self::special_form_when($args);
+            case 'while':      return self::special_form_while($args);
             }
 
             // internal functions
@@ -445,6 +446,32 @@ class Lisp {
         return $args[0];
     }
 
+    private function special_form_quasiquote($args, $noQuoting = FALSE) {
+        //echo "quasiquote: " . Expression::Render($args) . "\n";
+
+        $quoteSymbol = Symbol::Make('quote');
+        $content = array();
+        $nextUnquoted = $noQuoting;
+        foreach ($args as $i) {
+            if ($i instanceof Tilde) {
+                $nextUnquoted = TRUE;
+                continue;
+            }
+            if ($i instanceof AtSign) {
+                $content []= $i;
+                continue;
+            }
+            if (is_array($i) && !$nextUnquoted) {
+                $i = $this->special_form_quasiquote($i, TRUE);
+            }
+            $content []= $nextUnquoted ? $i : array($quoteSymbol, $i);
+            $nextUnquoted = $noQuoting;
+        }
+
+        //echo "RETURN: " . Expression::Render($content) . "\n";
+        return $content;
+    }
+
     private function special_form_dump($args) {
         foreach ($args as $arg) {
             echo Expression::Render($arg) . "\n";
@@ -526,46 +553,22 @@ class Expression {
         $tokens = array();
         $didClose = FALSE;
 
-        $quoteLevel = 0;
-        $quoteSymbol = new Symbol;
-        $quoteSymbol->name = 'quote';
+        $qStack = array();
+        $qSymbol = Symbol::Make('quote');
+        $qqSymbol = Symbol::Make('quasiquote');
 
         $append = FALSE;
 
         for (;;) {
             // append any expressions to our list
             if ($append !== FALSE) {
-                while ($quoteLevel > 0) {
-                    $quoteLevel--;
-
-                    // simple expressions are just quoted
-                    if (!is_array($append)) {
-                        $append = array($quoteSymbol, $append);
-                        continue;
-                    }
-
-                    // okay, we need to dive into the list
-                    // to check for tildes
-                    $quotedAppend = array();
-                    $nextUnquoted = FALSE;
-                    $didUnquoteSomething = FALSE;
-                    foreach ($append as $i) {
-                        if ($i instanceof Tilde) {
-                            $nextUnquoted = TRUE;
-                            continue;
-                        }
-                        if ($nextUnquoted) {
-                            $quotedAppend []= $i;
-                            $nextUnquoted = FALSE;
-                            $didUnquoteSomething = TRUE;
-                        } else {
-                            $quotedAppend []= array($quoteSymbol, $i);
-                        }
-                    }
-                    if ($didUnquoteSomething) {
-                        $append = array($quoteSymbol, $quotedAppend);
-                    } else {
-                        $append = array($quoteSymbol, $append);
+                while (count($qStack) > 0) {
+                    $qChar = array_pop($qStack);
+                    switch ($qChar) {
+                    case "'": $append = array($qSymbol, $append); break;
+                    case "`": $append = is_array($append) ?
+                                        array_merge(array($qqSymbol), $append) :
+                                        array($qSymbol, $append); break;
                     }
                 }
 
@@ -611,9 +614,9 @@ class Expression {
                 continue;
             }
 
-            // quote
-            if ($s[$pos] == "'") {
-                $quoteLevel++;
+            // quote and quasiquote
+            if ($s[$pos] == "`" || $s[$pos] == "'") {
+                array_push($qStack, $s[$pos]);
                 $pos++;
                 continue;
             }
