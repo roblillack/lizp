@@ -556,19 +556,11 @@ class Expression {
         }
 
         if ($expr instanceof Lambda) {
-            $txt = '<lambda:' . self::Render($expr->arguments) . '>';
-            foreach ($expr->expressions as $e) {
-                $txt .= "\n  " .self::Render($e);
-            }
-            return $txt;
+            return '<lambda:' . self::Render($expr->arguments) . '>';
         }
 
         if ($expr instanceof Macro) {
-            $txt = '<macro:' . self::Render($expr->arguments) . '>';
-            foreach ($expr->expressions as $e) {
-                $txt .= "\n  " .self::Render($e);
-            }
-            return $txt;
+            return '<macro:' . self::Render($expr->arguments) . '>';
         }
 
         return '<' . get_class($expr) . '>';
