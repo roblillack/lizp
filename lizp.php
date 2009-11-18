@@ -384,10 +384,9 @@ if ($_SERVER['argc'] < 2) {
 }
 
 $start = microtime(TRUE);
-//$expressions = Expression::ParseFile($_SERVER['argv'][1]);
 $input = file_get_contents($_SERVER['argv'][1]);
 $expressions = Expression::Parse($input);
-echo "parsed {$_SERVER['argv'][1]} in " . number_format(microtime(TRUE)-$start, 4) . "s\n";
+//echo "parsed {$_SERVER['argv'][1]} in " . number_format(microtime(TRUE)-$start, 4) . "s\n";
 $env = new Lisp();
 
 $start = microtime(TRUE);
@@ -396,4 +395,4 @@ foreach ($expressions as $expr) {
     $env->Evaluate($expr);
 }
 
-echo "executed {$_SERVER['argv'][1]} in " . number_format(microtime(TRUE)-$start, 4) . "s\n";
+//echo "executed {$_SERVER['argv'][1]} in " . number_format(microtime(TRUE)-$start, 4) . "s\n";
