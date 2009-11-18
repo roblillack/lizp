@@ -1,0 +1,15 @@
+; -*- mode: lisp -*-
+
+(defun is-nil (title expr)
+  (println " - "
+         title
+         ": "
+         (if (nil? expr)
+             "yes" "no")))
+
+(println "nil?:")
+(is-nil "empty list" ())
+(is-nil "nil" nil)
+(is-nil "zero" 0)
+(is-nil "empty string" "")
+(is-nil "t" t)

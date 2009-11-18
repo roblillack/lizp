@@ -150,16 +150,17 @@ class Lizp {
         return $r;
     }
 
-    // Some Liphp functions need to get
+    // Some Lizp functions need to get
     // mapped to more PHP-like internal names
     private static $_internalNames = array(
-        '+'   => 'sum',
-        '-'   => '_sub',
-        '*'   => '_multiply',
-        '/'   => '_divide',
-        'eq?' => '_eq',
-        '<'   => '_lt',
-        '>'   => '_gt');
+        '+'     => 'sum',
+        '-'     => '_sub',
+        '*'     => '_multiply',
+        '/'     => '_divide',
+        '<'     => '_lt',
+        '>'     => '_gt',
+        'eq?'   => '_eq',
+        'nil?'  => 'not');
 }
 
 class Expression {

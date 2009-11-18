@@ -121,3 +121,13 @@ function liphp_internal_fn_parse($env, $args) {
 
     return @$expr[0];
 }
+
+function liphp_internal_fn_not($env, $args) {
+    foreach ($args as $i) {
+        if ((is_array($i) && count($i) > 0) ||
+            (!is_array($i) && $i !== NULL && $i !== FALSE)) {
+            return NULL;
+        }
+    }
+    return TRUE;
+}
