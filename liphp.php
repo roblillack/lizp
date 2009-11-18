@@ -1,6 +1,9 @@
 <?php
+require_once(dirname(__FILE__) . '/internal_functions.php');
+require_once(dirname(__FILE__) . '/special_forms.php');
+
 class Lisp {
-    private $_environment = array();
+    public $environment = array();
 
     public function Apply($sexp, $args, $values) {
         if (is_array($sexp)) {
@@ -46,9 +49,10 @@ class Lisp {
 
     public function Evaluate($sexp) {
         if ($sexp instanceof Symbol) {
-            if (($r = @$this->_environment[$sexp->name]) !== NULL) {
+            if (($r = @$this->environment[$sexp->name]) !== NULL) {
                 return $r === FALSE ? NULL : $r;
             }
+            var_dump($sexp);
             throw new Exception("Unknown identifier: " . $sexp->name);
         } elseif (!is_array($sexp)) {
             return $sexp;
@@ -73,14 +77,14 @@ class Lisp {
                        $in;
 
             // special forms (non-evaluated parameters)
-            $specialForm = "special_form_{$phpName}";
-            if (method_exists($this, $specialForm)) {
-                return call_user_func(array($this, $specialForm), $args);
+            $specialForm = "liphp_special_form_{$phpName}";
+            if (function_exists($specialForm)) {
+                return call_user_func($specialForm, $this, $args);
             }
 
             // internal functions / php functions
-            $internalFn = "internal_fn_{$phpName}";
-            if (($im = method_exists($this, $internalFn)) ||
+            $internalFn = "liphp_internal_fn_{$phpName}";
+            if (($isInternal = function_exists($internalFn)) ||
                 function_exists($phpName)) {
                 $params = array();
                 $expandNext = FALSE;
@@ -98,15 +102,18 @@ class Lisp {
                     $expandNext = FALSE;
                 }
 
-                $funcall = $im ? array($this, $internalFn) : $phpName;
-                $r = call_user_func_array($funcall, $params);
+                if ($isInternal) {
+                    return call_user_func($internalFn, $this, $params);
+                }
+
+                $r = call_user_func_array($phpName, $params);
                 if ($r === FALSE || (is_array($r) && empty($r))) {
                     $r = NULL;
                 }
                 return $r;
             }
 
-            $lambda = @$this->_environment[$first->name];
+            $lambda = @$this->environment[$first->name];
         } else {
             $lambda = $first;
         }
@@ -153,369 +160,6 @@ class Lisp {
         'eq?' => '_eq',
         '<'   => '_lt',
         '>'   => '_gt');
-
-    private function internal_fn_exit() {
-        $args = func_get_args();
-        if (($r = @$args[0]) !== NULL && is_int($r)) {
-            exit($r);
-        }
-
-        exit(0);
-    }
-
-    private function internal_fn_p() {
-        $arg = NULL;
-        foreach (func_get_args() as $arg) {
-            echo Expression::Render($arg) . "\n";
-        }
-        return $arg;
-    }
-
-    private function internal_fn_print() {
-        foreach (func_get_args() as $arg) {
-            if (is_string($arg) || is_int($arg)) {
-                echo $arg;
-            }
-        }
-        return NULL;
-    }
-
-    private function internal_fn_println() {
-        foreach (func_get_args() as $arg) {
-            if (is_string($arg) || is_int($arg)) {
-                echo $arg;
-            }
-        }
-        echo "\n";
-        return NULL;
-    }
-
-    private function internal_fn_sum() {
-        $sum = 0;
-
-        foreach (func_get_args() as $arg) {
-            if (is_int($arg)) {
-                $sum += $arg;
-            }
-        }
-
-        return $sum;
-    }
-
-    private function internal_fn__multiply() {
-        $res = 1;
-        foreach (func_get_args() as $arg) {
-            if (is_int($arg)) {
-                $res *= $arg;
-            }
-        }
-        return $res;
-    }
-
-    private function internal_fn__divide() {
-        $res = NULL;
-        foreach (func_get_args() as $arg) {
-            if (is_int($arg)) {
-                if ($res === NULL) {
-                    $res = $arg;
-                } else {
-                    $res /= $arg;
-                }
-            }
-        }
-        return $res === NULL ? 1 : $res;
-    }
-
-    private function internal_fn__sub() {
-        $sum = NULL;
-        foreach (func_get_args() as $arg) {
-            if (is_int($arg)) {
-                if ($sum === NULL) {
-                    $sum = $arg;
-                } else {
-                    $sum -= $arg;
-                }
-            }
-        }
-        return $sum;
-    }
-
-
-    private function internal_fn_length() {
-        $args = func_get_args();
-        if (count($args) !== 1 ||
-            !(is_array($args[0]) || $args[0] === NULL || $args[0] === FALSE)) {
-            throw new Exception("syntax: (LENGTH <list>)");
-        }
-
-        return is_array($args[0]) ? count($args[0]) : 0;
-    }
-
-    private function internal_fn_eval() {
-        if (count($args = func_get_args()) != 1 || !is_string(@$args[0])) {
-            throw new Exception("syntax (EVAL <str>)");
-        }
-
-        $expr = Expression::Parse($args[0]);
-        if (count($expr) > 1) {
-            throw new Exception("Error: Multiple expressions given in " .
-                                Expression::Render($arg[0]));
-        }
-
-        return $this->Evaluate(@$expr[0]);
-    }
-
-    private function internal_fn_parse() {
-        $args = func_get_args();
-        if (!is_string(@$args[0])) {
-            throw new Exception("Syntax Error: (PARSE <string>)");
-        }
-
-        $expr = Expression::NewParse($args[0]);
-        if (count($expr) > 1) {
-            throw new Exception("Error: Multiple expressions given in " .
-                                Expression::Render($arg[0]));
-        }
-
-        return @$expr[0];
-    }
-
-    private function special_form__eq($args) {
-        $last = FALSE;
-
-        foreach ($args as $arg) {
-            $ev = $this->Evaluate($arg);
-            if ($last === FALSE) {
-                $last = $ev;
-                continue;
-            }
-            if ($last !== $ev) {
-                return NULL;
-            }
-        }
-        return TRUE;
-    }
-
-    private function special_form__lt($args) {
-        $last = FALSE;
-
-        foreach ($args as $arg) {
-            $ev = $this->Evaluate($arg);
-            if (!is_int($ev) && !is_double($ev)) {
-                throw new Exception("syntax: (< <int|double>*)");
-            }
-            if ($last === FALSE) {
-                $last = $ev;
-                continue;
-            }
-            if ($last >= $ev) {
-                return NULL;
-            }
-            $last = $ev;
-        }
-        return TRUE;
-    }
-
-    private function special_form__gt($args) {
-        $last = FALSE;
-
-        foreach ($args as $arg) {
-            $ev = $this->Evaluate($arg);
-            if (!is_int($ev) && !is_double($ev)) {
-                throw new Exception("syntax: (> <int|double>*)");
-            }
-            if ($last === FALSE) {
-                $last = $ev;
-                continue;
-            }
-            if ($last <= $ev) {
-                return NULL;
-            }
-            $last = $ev;
-        }
-        return TRUE;
-    }
-
-    private function special_form_and($args) {
-        foreach ($args as $arg) {
-            if ($this->Evaluate($arg) === NULL) {
-                return NULL;
-            }
-        }
-        return TRUE;
-    }
-
-    private function special_form_if($args) {
-        return $this->Evaluate(@$args[0]) === NULL ?
-            $this->Evaluate(@$args[2]) :
-            $this->Evaluate(@$args[1]);
-    }
-
-    private function special_form_unless($args) {
-        $r = NULL;
-
-        if ($this->Evaluate($args[0]) !== NULL) {
-            return $r;
-        }
-
-        foreach (array_slice($args, 1) as $e) {
-            $r = $this->Evaluate($e);
-        }
-
-        return $r;
-    }
-
-    private function special_form_when($args) {
-        $r = NULL;
-
-        if ($this->Evaluate($args[0]) === NULL) {
-            return $r;
-        }
-
-        foreach (array_slice($args, 1) as $e) {
-            $r = $this->Evaluate($e);
-        }
-
-        return $r;
-    }
-
-    private function special_form_while($args) {
-        $r = NULL;
-
-        while ($this->Evaluate($args[0]) !== NULL) {
-            foreach (array_slice($args, 1) as $e) {
-                $r = $this->Evaluate($e);
-            }
-        }
-
-        return $r;
-    }
-
-    private function special_form_define($args) {
-        if (count($args) != 2) {
-            throw new Exception("(DEFINE) needs two parameters!");
-        }
-        if (!($args[0] instanceof Symbol)) {
-            throw new Exception("Syntax Error: (DEFINE <id> <expr>)");
-        }
-
-        $r = $this->Evaluate($args[1]);
-        return $this->_environment[$args[0]->name] = ($r === NULL ? FALSE : $r);
-    }
-
-    private function special_form_defun($args) {
-        if (!(@$args[0] instanceof Symbol) ||
-            !(is_array(@$args[1]) || @$args[1] === NULL || @$args[1] === FALSE)) {
-            throw new Exception("Syntax Error: (DEFUN <id> (<params>*) <expr>*)");
-        }
-
-        $lambda = new Lambda;
-        $lambda->arguments = empty($args[1]) ? NULL : $args[1];
-        $lambda->expressions = array_slice($args, 2);
-
-        $this->_environment[$args[0]->name] = $lambda;
-
-        return Symbol::Make($args[0]->name);
-    }
-
-    private function special_form_defmacro($args) {
-        if (!(@$args[0] instanceof Symbol) ||
-            !(is_array(@$args[1]) || @$args[1] === NULL || @$args[1] === FALSE)) {
-            throw new Exception("Syntax Error: (DEFMACRO <id> (<params>*) <expr>*)");
-        }
-
-        $lambda = new Macro;
-        $lambda->arguments = empty($args[1]) ? NULL : $args[1];
-        $lambda->expressions = array_slice($args, 2);
-        $this->_environment[$args[0]->name] = $lambda;
-        return Symbol::Make($args[0]->name);
-    }
-
-    private function special_form_do($args) {
-        $r = NULL;
-
-        foreach ($args as $e) {
-            $r = $this->Evaluate($e);
-        }
-
-        return $r;
-    }
-
-    private function special_form_let($args) {
-        if (!(is_array(@$args[0]) || @$args[0] === NULL || @$args[0] === FALSE)) {
-            throw new Exception("Syntax Error: (LET (<values>*) <expr>*)");
-        }
-
-        $lambda = new Lambda;
-        $lambda->arguments = array();
-        $expressions = array($lambda);
-
-        foreach ($args[0] as $keyval) {
-            if (!is_array($keyval) || !($keyval[0] instanceof Symbol)) {
-                trigger_error("Ignoring " . Expression::Render($keyval) . " in (let) directive");
-            }
-            $lambda->arguments []= $keyval[0];
-            $expressions []= $keyval[1];
-        }
-
-        $lambda->expressions = array_slice($args, 1);
-
-        return $this->Evaluate($expressions);
-    }
-
-    private function special_form_lambda($args) {
-        if (!(is_array(@$args[0]) || @$args[0] === NULL || @$args[0] === FALSE)) {
-            throw new Exception("Syntax Error: (LAMBDA (<params>*) <expr>*)");
-        }
-
-        $lambda = new Lambda;
-        $lambda->arguments = empty($args[0]) ? NULL : $args[0];
-        $lambda->expressions = array_slice($args, 1);
-
-        return $lambda;
-    }
-
-    private function special_form_quote($args) {
-        if (count($args) != 1) {
-            throw new Exception("Syntax Error: (QUOTE <expr>)");
-        }
-
-        return $args[0];
-    }
-
-    private function special_form_quasiquote($args, $noQuoting = FALSE) {
-        //echo "quasiquote: " . Expression::Render($args) . "\n";
-
-        $quoteSymbol = Symbol::Make('quote');
-        $content = array();
-        $nextUnquoted = $noQuoting;
-        foreach ($args as $i) {
-            if ($i instanceof Tilde) {
-                $nextUnquoted = TRUE;
-                continue;
-            }
-            if ($i instanceof AtSign) {
-                $content []= $i;
-                continue;
-            }
-            if (is_array($i) && !$nextUnquoted) {
-                $i = $this->special_form_quasiquote($i, TRUE);
-            }
-            $content []= $nextUnquoted ? $i : array($quoteSymbol, $i);
-            $nextUnquoted = $noQuoting;
-        }
-
-        //echo "RETURN: " . Expression::Render($content) . "\n";
-        return $content;
-    }
-
-    private function special_form_dump($args) {
-        foreach ($args as $arg) {
-            echo Expression::Render($arg) . "\n";
-        }
-        return NULL;
-    }
-
 }
 
 class Expression {
