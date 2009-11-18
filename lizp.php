@@ -159,7 +159,9 @@ class Lizp {
         '/'     => '_divide',
         '<'     => '_lt',
         '>'     => '_gt',
+        'atom?' => '_atom',
         'eq?'   => '_eq',
+        'list?' => '_list',
         'nil?'  => 'not');
 }
 

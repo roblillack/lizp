@@ -13,6 +13,28 @@ function liphp_internal_fn_append($env, $args) {
     return empty($r) ? NULL : $r;
 }
 
+function liphp_internal_fn__atom($env, $args) {
+    foreach ($args as $i) {
+        if (is_array($i) && count($i) > 0) {
+            return NULL;
+        }
+    }
+    return TRUE;
+}
+
+function liphp_internal_fn_list($env, $args) {
+    return $args;
+}
+
+function liphp_internal_fn__list($env, $args) {
+    foreach ($args as $i) {
+        if (!(is_array($i) && count($i) > 0)) {
+            return NULL;
+        }
+    }
+    return TRUE;
+}
+
 function liphp_internal_fn_exit($env, $args) {
     if (($r = @$args[0]) !== NULL && is_int($r)) {
         exit($r);
