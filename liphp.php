@@ -68,27 +68,20 @@ class Lisp {
         }
 
         if ($first instanceof Symbol) {
-            // special forms
-            switch ($first->name) {
-            case 'and':        return self::special_form_and($args);
-            case 'define':     return self::special_form_define($args);
-            case 'defmacro':   return self::special_form_defmacro($args);
-            case 'defun':      return self::special_form_defun($args);
-            case 'do':         return self::special_form_do($args);
-            case 'dump':       return self::special_form_dump($args);
-            case 'eq?':        return self::special_form_eq($args);
-            case 'if':         return self::special_form_if($args);
-            case 'lambda':     return self::special_form_lambda($args);
-            case 'let':        return self::special_form_let($args);
-            case 'quasiquote': return self::special_form_quasiquote($args);
-            case 'quote':      return self::special_form_quote($args);
-            case 'unless':     return self::special_form_unless($args);
-            case 'when':       return self::special_form_when($args);
-            case 'while':      return self::special_form_while($args);
+            $phpName = ($in = @self::$_internalNames[$first->name]) === NULL ?
+                       str_replace('-', '_', $first->name) :
+                       $in;
+
+            // special forms (non-evaluated parameters)
+            $specialForm = "special_form_{$phpName}";
+            if (method_exists($this, $specialForm)) {
+                return call_user_func(array($this, $specialForm), $args);
             }
 
-            // internal functions
-            if (($fnName = @self::$_internalFunctions[$first->name]) !== NULL) {
+            // internal functions / php functions
+            $internalFn = "internal_fn_{$phpName}";
+            if (($im = method_exists($this, $internalFn)) ||
+                function_exists($phpName)) {
                 $params = array();
                 $expandNext = FALSE;
                 foreach ($args as $v) {
@@ -105,32 +98,8 @@ class Lisp {
                     $expandNext = FALSE;
                 }
 
-                if (function_exists("self::{$fnName}")) {
-                    return call_user_func_array("self::{$fnName}", $params);
-                } else {
-                    return call_user_func_array(array($this, $fnName), $params);
-                }
-            }
-
-            // php functions
-            if (function_exists($first->name)) {
-                $params = array();
-                $expandNext = FALSE;
-                foreach ($args as $v) {
-                    if ($v instanceof AtSign) {
-                        $expandNext = TRUE;
-                        continue;
-                    }
-                    $r = $this->Evaluate($v);
-                    if ($expandNext && is_array($r)) {
-                        $params = array_merge($params, $r);
-                    } else {
-                        $params []= $r;
-                    }
-                    $expandNext = FALSE;
-                }
-
-                $r = call_user_func_array($first->name, $params);
+                $funcall = $im ? array($this, $internalFn) : $phpName;
+                $r = call_user_func_array($funcall, $params);
                 if ($r === FALSE || (is_array($r) && empty($r))) {
                     $r = NULL;
                 }
@@ -174,21 +143,18 @@ class Lisp {
         return $r;
     }
 
-    private static $_internalFunctions = array(
-        'sum'     => '_sum',
-        '+'       => '_sum',
-        '-'       => '_sub',
-        '*'       => '_multiply',
-        '/'       => '_divide',
-        'length'  => '_length',
-        'parse'   => '_parse',
-        'print'   => '_print',
-        'println' => '_println',
-        'p'       => '_dump',
-        'exit'    => '_exit',
-        'eval'    => '_eval');
+    // Some Liphp functions need to get
+    // mapped to more PHP-like internal names
+    private static $_internalNames = array(
+        '+'   => 'sum',
+        '-'   => '_sub',
+        '*'   => '_multiply',
+        '/'   => '_divide',
+        'eq?' => '_eq',
+        '<'   => '_lt',
+        '>'   => '_gt');
 
-    private static function _exit() {
+    private function internal_fn_exit() {
         $args = func_get_args();
         if (($r = @$args[0]) !== NULL && is_int($r)) {
             exit($r);
@@ -197,7 +163,7 @@ class Lisp {
         exit(0);
     }
 
-    private static function _dump() {
+    private function internal_fn_p() {
         $arg = NULL;
         foreach (func_get_args() as $arg) {
             echo Expression::Render($arg) . "\n";
@@ -205,7 +171,7 @@ class Lisp {
         return $arg;
     }
 
-    private static function _print() {
+    private function internal_fn_print() {
         foreach (func_get_args() as $arg) {
             if (is_string($arg) || is_int($arg)) {
                 echo $arg;
@@ -214,7 +180,7 @@ class Lisp {
         return NULL;
     }
 
-    private static function _println() {
+    private function internal_fn_println() {
         foreach (func_get_args() as $arg) {
             if (is_string($arg) || is_int($arg)) {
                 echo $arg;
@@ -224,7 +190,7 @@ class Lisp {
         return NULL;
     }
 
-    private static function _sum() {
+    private function internal_fn_sum() {
         $sum = 0;
 
         foreach (func_get_args() as $arg) {
@@ -236,7 +202,7 @@ class Lisp {
         return $sum;
     }
 
-    private static function _multiply() {
+    private function internal_fn__multiply() {
         $res = 1;
         foreach (func_get_args() as $arg) {
             if (is_int($arg)) {
@@ -246,7 +212,7 @@ class Lisp {
         return $res;
     }
 
-    private static function _divide() {
+    private function internal_fn__divide() {
         $res = NULL;
         foreach (func_get_args() as $arg) {
             if (is_int($arg)) {
@@ -260,7 +226,7 @@ class Lisp {
         return $res === NULL ? 1 : $res;
     }
 
-    private static function _sub() {
+    private function internal_fn__sub() {
         $sum = NULL;
         foreach (func_get_args() as $arg) {
             if (is_int($arg)) {
@@ -275,7 +241,7 @@ class Lisp {
     }
 
 
-    private static function _length() {
+    private function internal_fn_length() {
         $args = func_get_args();
         if (count($args) !== 1 ||
             !(is_array($args[0]) || $args[0] === NULL || $args[0] === FALSE)) {
@@ -285,7 +251,7 @@ class Lisp {
         return is_array($args[0]) ? count($args[0]) : 0;
     }
 
-    private function _eval() {
+    private function internal_fn_eval() {
         if (count($args = func_get_args()) != 1 || !is_string(@$args[0])) {
             throw new Exception("syntax (EVAL <str>)");
         }
@@ -299,7 +265,7 @@ class Lisp {
         return $this->Evaluate(@$expr[0]);
     }
 
-    private static function _parse() {
+    private function internal_fn_parse() {
         $args = func_get_args();
         if (!is_string(@$args[0])) {
             throw new Exception("Syntax Error: (PARSE <string>)");
@@ -314,7 +280,7 @@ class Lisp {
         return @$expr[0];
     }
 
-    private function special_form_eq($args) {
+    private function special_form__eq($args) {
         $last = FALSE;
 
         foreach ($args as $arg) {
@@ -326,6 +292,46 @@ class Lisp {
             if ($last !== $ev) {
                 return NULL;
             }
+        }
+        return TRUE;
+    }
+
+    private function special_form__lt($args) {
+        $last = FALSE;
+
+        foreach ($args as $arg) {
+            $ev = $this->Evaluate($arg);
+            if (!is_int($ev) && !is_double($ev)) {
+                throw new Exception("syntax: (< <int|double>*)");
+            }
+            if ($last === FALSE) {
+                $last = $ev;
+                continue;
+            }
+            if ($last >= $ev) {
+                return NULL;
+            }
+            $last = $ev;
+        }
+        return TRUE;
+    }
+
+    private function special_form__gt($args) {
+        $last = FALSE;
+
+        foreach ($args as $arg) {
+            $ev = $this->Evaluate($arg);
+            if (!is_int($ev) && !is_double($ev)) {
+                throw new Exception("syntax: (> <int|double>*)");
+            }
+            if ($last === FALSE) {
+                $last = $ev;
+                continue;
+            }
+            if ($last <= $ev) {
+                return NULL;
+            }
+            $last = $ev;
         }
         return TRUE;
     }
