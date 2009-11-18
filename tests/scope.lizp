@@ -1,3 +1,4 @@
+; -*- mode: lisp -*-
 ; tests the scoping correctness
 
 (define scope "lexical")

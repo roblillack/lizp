@@ -2,7 +2,7 @@
 require_once(dirname(__FILE__) . '/internal_functions.php');
 require_once(dirname(__FILE__) . '/special_forms.php');
 
-class Lisp {
+class Lizp {
     public $environment = array();
 
     public function Apply($sexp, $args, $values) {
@@ -387,7 +387,7 @@ $start = microtime(TRUE);
 $input = file_get_contents($_SERVER['argv'][1]);
 $expressions = Expression::Parse($input);
 //echo "parsed {$_SERVER['argv'][1]} in " . number_format(microtime(TRUE)-$start, 4) . "s\n";
-$env = new Lisp();
+$env = new Lizp();
 
 $start = microtime(TRUE);
 
