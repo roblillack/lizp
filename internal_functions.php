@@ -1,4 +1,18 @@
 <?php
+function liphp_internal_fn_append($env, $args) {
+    foreach ($args as $i => $arg) {
+        if (!is_array($arg)) {
+            if ($arg === NULL || $arg === FALSE) {
+                $args[$i] = array();
+            } else {
+                throw new Exception("syntax: (APPEND <list>*)");
+            }
+        }
+    }
+    $r = @call_user_func_array('array_merge', $args);
+    return empty($r) ? NULL : $r;
+}
+
 function liphp_internal_fn_exit($env, $args) {
     if (($r = @$args[0]) !== NULL && is_int($r)) {
         exit($r);

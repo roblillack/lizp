@@ -87,3 +87,7 @@
 
 
 (print-random 1 100000)
+
+(p (append))
+(p (append nil '(1 2 3)))
+(p (append '(1) '(2 3)))
