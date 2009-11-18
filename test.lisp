@@ -2,7 +2,7 @@
 (println (- (+ (/ 44 2) (* 3 (+ 20 10))) 1))
 (println "Bye")
 (println "Size of /etc/shells: "
-         (strlen (file_get_contents "/etc/shells")))
+         (strlen (file-get-contents "/etc/shells")))
 
 (dump (if t (println "eins")
         (println "noe")))
@@ -11,9 +11,15 @@
          (if () "was drin" "leer"))
 
 (println "MySQL-Funktionen existieren: "
-         (if (function_exists "mysql_connect") "ja" "nein"))
+         (if (function-exists "mysql_connect") "ja" "nein"))
 
-(p (function_exists "mysql_connectas"))
+(p (function-exists "mysql_connectas"))
+
+(when (< 1 2 3)
+  (println "< works"))
+
+(when (> (/ 3 2) 1 0 -1)
+  (println "> works"))
 
 (define bla "bla")
 (define bla "blubber")
@@ -51,3 +57,43 @@
 
 (let ((bla "blA") (blub "blubb!"))
   (println bla " -- " blub))
+
+;(defmacro make-adder (a b)
+;  '(+ ~a ~b))
+
+;(defmacro three-times (what)
+;  '(println ~what ", " ~what ", " ~what "."))
+
+;(defmacro avg (&rest list)
+;  `(/ (+ ,@list ,(length list))))
+
+;(defmacro avg1 (&rest list)
+;  '(/ (+ ~@list ~(length list))))
+
+(defun count-args (&rest args) (length args))
+
+(defun list (&rest args)
+  '(@args))
+
+(defmacro avg2 (&rest list)
+  `(/ (+ ~@list) ~(length list)))
+
+;(three-times "bla")
+
+(println "random number: "
+         (rand 1 1000))
+
+(println "argcount: " (count-args 10 20 10))
+
+(p (avg2 10 20))
+
+(p (list 10 20 30))
+
+(define mm '(10 20))
+(println "rand 10-20: " (rand @mm))
+
+(defun print-random (&rest args)
+  (println "random: " (rand @args)))
+
+
+(print-random 1 100000)
