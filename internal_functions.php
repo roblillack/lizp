@@ -65,6 +65,19 @@ function liphp_internal_fn_last($env, $args) {
     return $args[0][$c - 1];
 }
 
+function liphp_internal_fn_rest($env, $args) {
+    if (count($args) !== 1 ||
+        !(is_array($args[0]) || $args[0] === NULL || $args[0] === FALSE)) {
+        throw new Exception("syntax: (REST <list>)");
+    }
+
+    if (!is_array($args[0]) || ($c = count($args[0])) < 2) {
+        return NULL;
+    }
+
+    return array_slice($args[0], 1);
+}
+
 function liphp_internal_fn_p($env, $args) {
     $arg = NULL;
     foreach ($args as $arg) {
