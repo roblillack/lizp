@@ -304,7 +304,7 @@ class Expression {
                 continue;
             }
 
-            // tilde
+            // at sign
             if ($s[$pos] == "@") {
                 $append = new AtSign;
                 $pos++;
