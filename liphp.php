@@ -677,7 +677,7 @@ class Expression {
             }
 
             // consume integers
-            if (preg_match('/^([0-9]+)/s', $sub, $m)) {
+            if (preg_match('/^([+-]?[0-9]+)/s', $sub, $m)) {
                 $append = (int) $m[1];
                 $pos += strlen($m[1]);
                 continue;
