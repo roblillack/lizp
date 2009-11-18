@@ -1,4 +1,6 @@
-(unless (function_exists "readline")
+; -*- mode: lisp -*-
+
+(unless (function-exists "readline")
   (println "Readline missing. Using rudimentary input line!")
 
   (defun readline (prompt)
@@ -6,7 +8,7 @@
     (define fp (fopen "php://stdin" "r"))
     (rtrim (fgets fp 1024)))
 
-  (defun readline_add_history (line)))
+  (defun readline-add-history (line)))
 
 ; this is a comment!1
 (while t
@@ -17,7 +19,7 @@
     (println "Goodbye.")
     (exit 0))
 
-  (readline_add_history input)
+  (readline-add-history input)
   (define r (eval input))
   (print "* ")
   (p r))
