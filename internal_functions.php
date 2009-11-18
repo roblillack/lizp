@@ -21,6 +21,28 @@ function liphp_internal_fn_exit($env, $args) {
     exit(0);
 }
 
+function liphp_internal_fn_first($env, $args) {
+    if (count($args) !== 1 ||
+        !(is_array($args[0]) || $args[0] === NULL || $args[0] === FALSE)) {
+        throw new Exception("syntax: (FIRST <list>)");
+    }
+
+    return @$args[0][0];
+}
+
+function liphp_internal_fn_last($env, $args) {
+    if (count($args) !== 1 ||
+        !(is_array($args[0]) || $args[0] === NULL || $args[0] === FALSE)) {
+        throw new Exception("syntax: (LAST <list>)");
+    }
+
+    if (!is_array($args[0]) || ($c = count($args[0])) == 0) {
+        return NULL;
+    }
+
+    return $args[0][$c - 1];
+}
+
 function liphp_internal_fn_p($env, $args) {
     $arg = NULL;
     foreach ($args as $arg) {
