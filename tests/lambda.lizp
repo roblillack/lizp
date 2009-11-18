@@ -1,0 +1,10 @@
+; -*- mode: lisp -*-
+; oh the beauty
+
+(println (str "10! = "
+              (((lambda (x) (x x))
+                (lambda (y) (lambda (n)
+                              (if (eq? n 0)
+                                  1
+                                (* n ((y y)
+                                      (- n 1))))))) 10)))

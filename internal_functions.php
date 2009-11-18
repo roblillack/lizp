@@ -236,3 +236,19 @@ function liphp_internal_fn_reduce($env, $args) {
 
     return $r;
 }
+
+function liphp_internal_fn_str($env, $args) {
+    $out = array();
+    foreach ($args as $i) {
+        if ($i instanceof Symbol) {
+            $out []= $i->name;
+        } elseif ($i instanceof Macro ||
+                  $i instanceof Lambda) {
+            continue;
+        } else {
+            $out []= (string) $i;
+        }
+    }
+
+    return implode('', $out);
+}
