@@ -122,6 +122,21 @@ function liphp_internal_fn_parse($env, $args) {
     return @$expr[0];
 }
 
+function liphp_internal_fn_map($env, $args) {
+    if (count($args) !== 2 ||
+        !($args[0] instanceof Lambda || $args[0] instanceof Symbol) ||
+        (!is_array($args[1]) && $args[1] !== NULL)) {
+        throw new Exception("syntax: (MAP <lambda> <list>)");
+    }
+
+    $r = array();
+    foreach ((array) $args[1] as $i) {
+        $r []= $env->Evaluate(array($args[0], $i));
+    }
+
+    return empty($r) ? NULL : $r;
+}
+
 function liphp_internal_fn_not($env, $args) {
     foreach ($args as $i) {
         if ((is_array($i) && count($i) > 0) ||
@@ -130,4 +145,23 @@ function liphp_internal_fn_not($env, $args) {
         }
     }
     return TRUE;
+}
+
+function liphp_internal_fn_reduce($env, $args) {
+    if (count($args) < 2 || count($args) > 3 ||
+        !($args[0] instanceof Lambda || $args[0] instanceof Symbol) ||
+        (!is_array($args[1]) && $args[1] !== NULL)) {
+        throw new Exception("syntax: (REDUCE <lambda> <list> [<expr>])");
+    }
+
+    $r = isset($args[2]) ? $args[2] : FALSE;
+    foreach ((array) $args[1] as $i) {
+        if ($r === FALSE) {
+            $r = $i;
+            continue;
+        }
+        $r = $env->Evaluate(array($args[0], $r, $i));
+    }
+
+    return $r;
 }
