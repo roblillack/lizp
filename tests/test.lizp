@@ -62,22 +62,12 @@
 
 (defun count-args (&rest args) (length args))
 
-(defun list (&rest args)
-  '(@args))
-
-(defmacro avg2 (&rest list)
-  `(/ (+ ~@list) ~(length list)))
-
 ;(three-times "bla")
 
 (println "random number: "
          (rand 1 1000))
 
 (println "argcount: " (count-args 10 20 10))
-
-(p (avg2 10 20))
-
-(p (list 10 20 30))
 
 (define mm '(10 20))
 (println "rand 10-20: " (rand @mm))
