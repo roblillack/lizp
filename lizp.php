@@ -37,7 +37,8 @@ class Lizp {
                     return array(Symbol::Make('quote'),
                                  array_slice($values, $i - 1));
                 }
-                return @$values[$i];
+                return is_array(@$values[$i]) ?
+                    array(Symbol::Make('quote'), @$values[$i]) : @$values[$i];
             }
         }
 
@@ -122,6 +123,14 @@ class Lizp {
         if ($lambda instanceof Lambda) {
             $r = NULL;
             foreach ($lambda->expressions as $e) {
+                $args = array();
+                foreach ($params as $i) {
+                    if (is_array($i)) {
+                        $i = array(Symbol::Make('quote'), $i);
+                    }
+                    $args []= $i;
+                }
+                //$params = $args;
                 $applied = $lambda->arguments === NULL ? $e : $this->Apply($e, $lambda->arguments, $params);
                 //echo Expression::Render($e) . " -APPLY-> " . Expression::Render($applied) . "\n";
                 $r = $this->Evaluate($applied);

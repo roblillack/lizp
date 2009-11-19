@@ -1,8 +1,31 @@
 ; -*- mode: lisp -*-
 
+(defun return-x (x)
+  (str x))
+
 (let ((x (rand 1 1000000)))
+  (println "this is alle the same")
   (println x)
   (println x)
   (println x)
   (println x)
+  (let ((retx (return-x x)))
+    (println retx))
   (println x))
+
+(println)
+
+(defun print-list (x)
+  (when (list? x)
+    (print-list (first x))
+    (print-list (rest x)))
+  (unless (list? x)
+    (if (nil? x)
+        nil
+      (println (str x)))))
+
+(define my-list '(1 2 3 4 5))
+(print "i'm gonna this list: ")
+(p my-list)
+
+(print-list my-list)
