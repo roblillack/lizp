@@ -1,5 +1,5 @@
 <?php
-function liphp_internal_fn_append($env, $args) {
+function lizp_internal_fn_append($env, $args) {
     foreach ($args as $i => $arg) {
         if (!is_array($arg)) {
             if ($arg === NULL || $arg === FALSE) {
@@ -13,7 +13,7 @@ function liphp_internal_fn_append($env, $args) {
     return empty($r) ? NULL : $r;
 }
 
-function liphp_internal_fn__atom($env, $args) {
+function lizp_internal_fn__atom($env, $args) {
     foreach ($args as $i) {
         if (is_array($i) && count($i) > 0) {
             return NULL;
@@ -22,11 +22,11 @@ function liphp_internal_fn__atom($env, $args) {
     return TRUE;
 }
 
-function liphp_internal_fn_list($env, $args) {
+function lizp_internal_fn_list($env, $args) {
     return $args;
 }
 
-function liphp_internal_fn__list($env, $args) {
+function lizp_internal_fn__list($env, $args) {
     foreach ($args as $i) {
         if (!(is_array($i) && count($i) > 0)) {
             return NULL;
@@ -35,7 +35,7 @@ function liphp_internal_fn__list($env, $args) {
     return TRUE;
 }
 
-function liphp_internal_fn_exit($env, $args) {
+function lizp_internal_fn_exit($env, $args) {
     if (($r = @$args[0]) !== NULL && is_int($r)) {
         exit($r);
     }
@@ -43,7 +43,7 @@ function liphp_internal_fn_exit($env, $args) {
     exit(0);
 }
 
-function liphp_internal_fn_first($env, $args) {
+function lizp_internal_fn_first($env, $args) {
     if (count($args) !== 1 ||
         !(is_array($args[0]) || $args[0] === NULL || $args[0] === FALSE)) {
         throw new Exception("syntax: (FIRST <list>)");
@@ -52,7 +52,7 @@ function liphp_internal_fn_first($env, $args) {
     return @$args[0][0];
 }
 
-function liphp_internal_fn_last($env, $args) {
+function lizp_internal_fn_last($env, $args) {
     if (count($args) !== 1 ||
         !(is_array($args[0]) || $args[0] === NULL || $args[0] === FALSE)) {
         throw new Exception("syntax: (LAST <list>)");
@@ -65,7 +65,7 @@ function liphp_internal_fn_last($env, $args) {
     return $args[0][$c - 1];
 }
 
-function liphp_internal_fn_rest($env, $args) {
+function lizp_internal_fn_rest($env, $args) {
     if (count($args) !== 1 ||
         !(is_array($args[0]) || $args[0] === NULL || $args[0] === FALSE)) {
         throw new Exception("syntax: (REST <list>)");
@@ -78,7 +78,7 @@ function liphp_internal_fn_rest($env, $args) {
     return array_slice($args[0], 1);
 }
 
-function liphp_internal_fn_p($env, $args) {
+function lizp_internal_fn_p($env, $args) {
     $arg = NULL;
     foreach ($args as $arg) {
         echo Expression::Render($arg) . "\n";
@@ -86,7 +86,7 @@ function liphp_internal_fn_p($env, $args) {
     return $arg;
 }
 
-function liphp_internal_fn_print($env, $args) {
+function lizp_internal_fn_print($env, $args) {
     foreach ($args as $arg) {
         if (is_string($arg) || is_int($arg)) {
             echo $arg;
@@ -95,7 +95,7 @@ function liphp_internal_fn_print($env, $args) {
     return NULL;
 }
 
-function liphp_internal_fn_println($env, $args) {
+function lizp_internal_fn_println($env, $args) {
     foreach ($args as $arg) {
         if (is_string($arg) || is_int($arg)) {
             echo $arg;
@@ -105,7 +105,7 @@ function liphp_internal_fn_println($env, $args) {
     return NULL;
 }
 
-function liphp_internal_fn_sum($env, $args) {
+function lizp_internal_fn_sum($env, $args) {
     $sum = 0;
 
     foreach ($args as $arg) {
@@ -117,7 +117,7 @@ function liphp_internal_fn_sum($env, $args) {
     return $sum;
 }
 
-function liphp_internal_fn__multiply($env, $args) {
+function lizp_internal_fn__multiply($env, $args) {
     $res = 1;
     foreach ($args as $arg) {
         if (is_int($arg) || is_double($arg)) {
@@ -127,7 +127,7 @@ function liphp_internal_fn__multiply($env, $args) {
     return $res;
 }
 
-function liphp_internal_fn__divide($env, $args) {
+function lizp_internal_fn__divide($env, $args) {
     $res = NULL;
     foreach ($args as $arg) {
         if (is_int($arg) || is_double($arg)) {
@@ -141,7 +141,7 @@ function liphp_internal_fn__divide($env, $args) {
     return $res === NULL ? 1 : $res;
 }
 
-function liphp_internal_fn__sub($env, $args) {
+function lizp_internal_fn__sub($env, $args) {
     $sum = NULL;
     foreach ($args as $arg) {
         if (is_int($arg) || is_double($arg)) {
@@ -156,7 +156,7 @@ function liphp_internal_fn__sub($env, $args) {
 }
 
 
-function liphp_internal_fn_length($env, $args) {
+function lizp_internal_fn_length($env, $args) {
     if (count($args) !== 1 ||
         !(is_array($args[0]) || $args[0] === NULL || $args[0] === FALSE)) {
         throw new Exception("syntax: (LENGTH <list>)");
@@ -165,7 +165,7 @@ function liphp_internal_fn_length($env, $args) {
     return is_array($args[0]) ? count($args[0]) : 0;
 }
 
-function liphp_internal_fn_eval($env, $args) {
+function lizp_internal_fn_eval($env, $args) {
     if (count($args) != 1 || !is_string(@$args[0])) {
         throw new Exception("syntax (EVAL <str>)");
     }
@@ -179,7 +179,7 @@ function liphp_internal_fn_eval($env, $args) {
     return $env->Evaluate(@$expr[0]);
 }
 
-function liphp_internal_fn_parse($env, $args) {
+function lizp_internal_fn_parse($env, $args) {
     if (!is_string(@$args[0])) {
         throw new Exception("Syntax Error: (PARSE <string>)");
     }
@@ -193,7 +193,7 @@ function liphp_internal_fn_parse($env, $args) {
     return @$expr[0];
 }
 
-function liphp_internal_fn_map($env, $args) {
+function lizp_internal_fn_map($env, $args) {
     if (count($args) !== 2 ||
         !($args[0] instanceof Lambda || $args[0] instanceof Symbol) ||
         (!is_array($args[1]) && $args[1] !== NULL)) {
@@ -208,7 +208,7 @@ function liphp_internal_fn_map($env, $args) {
     return empty($r) ? NULL : $r;
 }
 
-function liphp_internal_fn_not($env, $args) {
+function lizp_internal_fn_not($env, $args) {
     foreach ($args as $i) {
         if ((is_array($i) && count($i) > 0) ||
             (!is_array($i) && $i !== NULL && $i !== FALSE)) {
@@ -218,7 +218,7 @@ function liphp_internal_fn_not($env, $args) {
     return TRUE;
 }
 
-function liphp_internal_fn_reduce($env, $args) {
+function lizp_internal_fn_reduce($env, $args) {
     if (count($args) < 2 || count($args) > 3 ||
         !($args[0] instanceof Lambda || $args[0] instanceof Symbol) ||
         (!is_array($args[1]) && $args[1] !== NULL)) {
@@ -237,7 +237,7 @@ function liphp_internal_fn_reduce($env, $args) {
     return $r;
 }
 
-function liphp_internal_fn_str($env, $args) {
+function lizp_internal_fn_str($env, $args) {
     $out = array();
     foreach ($args as $i) {
         if ($i instanceof Symbol) {
@@ -253,7 +253,7 @@ function liphp_internal_fn_str($env, $args) {
     return implode('', $out);
 }
 
-function liphp_internal_fn_symbol_name($env, $args) {
+function lizp_internal_fn_symbol_name($env, $args) {
     if (count($args) != 1) {
         throw new Exception("Syntax Error: (SYMBOL-NAME <symbol>)");
     }

@@ -1,5 +1,5 @@
 <?php
-function liphp_special_form__eq($env, $args) {
+function lizp_special_form__eq($env, $args) {
     $last = FALSE;
 
     foreach ($args as $arg) {
@@ -15,7 +15,7 @@ function liphp_special_form__eq($env, $args) {
     return TRUE;
 }
 
-function liphp_special_form__lt($env, $args) {
+function lizp_special_form__lt($env, $args) {
     $last = FALSE;
 
     foreach ($args as $arg) {
@@ -35,7 +35,7 @@ function liphp_special_form__lt($env, $args) {
     return TRUE;
 }
 
-function liphp_special_form__gt($env, $args) {
+function lizp_special_form__gt($env, $args) {
     $last = FALSE;
 
     foreach ($args as $arg) {
@@ -55,7 +55,7 @@ function liphp_special_form__gt($env, $args) {
     return TRUE;
 }
 
-function liphp_special_form_and($env, $args) {
+function lizp_special_form_and($env, $args) {
     foreach ($args as $arg) {
         if ($env->Evaluate($arg) === NULL) {
             return NULL;
@@ -64,13 +64,13 @@ function liphp_special_form_and($env, $args) {
     return TRUE;
 }
 
-function liphp_special_form_if($env, $args) {
+function lizp_special_form_if($env, $args) {
     return $env->Evaluate(@$args[0]) === NULL ?
         $env->Evaluate(@$args[2]) :
         $env->Evaluate(@$args[1]);
 }
 
-function liphp_special_form_unless($env, $args) {
+function lizp_special_form_unless($env, $args) {
     $r = NULL;
 
     if (($r = $env->Evaluate($args[0])) !== NULL) {
@@ -84,7 +84,7 @@ function liphp_special_form_unless($env, $args) {
     return $r;
 }
 
-function liphp_special_form_when($env, $args) {
+function lizp_special_form_when($env, $args) {
     $r = NULL;
 
     if ($env->Evaluate($args[0]) === NULL) {
@@ -98,7 +98,7 @@ function liphp_special_form_when($env, $args) {
     return $r;
 }
 
-function liphp_special_form_while($env, $args) {
+function lizp_special_form_while($env, $args) {
     $r = NULL;
 
     while ($env->Evaluate($args[0]) !== NULL) {
@@ -110,7 +110,7 @@ function liphp_special_form_while($env, $args) {
     return $r;
 }
 
-function liphp_special_form_define($env, $args) {
+function lizp_special_form_define($env, $args) {
     if (count($args) != 2) {
         throw new Exception("(DEFINE) needs two parameters!");
     }
@@ -122,7 +122,7 @@ function liphp_special_form_define($env, $args) {
     return $env->environment[$args[0]->name] = ($r === NULL ? FALSE : $r);
 }
 
-function liphp_special_form_defun($env, $args) {
+function lizp_special_form_defun($env, $args) {
     if (!(@$args[0] instanceof Symbol) ||
         !(is_array(@$args[1]) || @$args[1] === NULL || @$args[1] === FALSE)) {
         throw new Exception("Syntax Error: (DEFUN <id> (<params>*) <expr>*)");
@@ -137,7 +137,7 @@ function liphp_special_form_defun($env, $args) {
     return Symbol::Make($args[0]->name);
 }
 
-function liphp_special_form_defmacro($env, $args) {
+function lizp_special_form_defmacro($env, $args) {
     if (!(@$args[0] instanceof Symbol) ||
         !(is_array(@$args[1]) || @$args[1] === NULL || @$args[1] === FALSE)) {
         throw new Exception("Syntax Error: (DEFMACRO <id> (<params>*) <expr>*)");
@@ -150,7 +150,7 @@ function liphp_special_form_defmacro($env, $args) {
     return Symbol::Make($args[0]->name);
 }
 
-function liphp_special_form_do($env, $args) {
+function lizp_special_form_do($env, $args) {
     $r = NULL;
 
     foreach ($args as $e) {
@@ -160,7 +160,7 @@ function liphp_special_form_do($env, $args) {
     return $r;
 }
 
-function liphp_special_form_let($env, $args) {
+function lizp_special_form_let($env, $args) {
     if (!(is_array(@$args[0]) || @$args[0] === NULL || @$args[0] === FALSE)) {
         throw new Exception("Syntax Error: (LET (<values>*) <expr>*)");
     }
@@ -182,7 +182,7 @@ function liphp_special_form_let($env, $args) {
     return $env->Evaluate($expressions);
 }
 
-function liphp_special_form_lambda($env, $args) {
+function lizp_special_form_lambda($env, $args) {
     if (!(is_array(@$args[0]) || @$args[0] === NULL || @$args[0] === FALSE)) {
         throw new Exception("Syntax Error: (LAMBDA (<params>*) <expr>*)");
     }
@@ -194,7 +194,7 @@ function liphp_special_form_lambda($env, $args) {
     return $lambda;
 }
 
-function liphp_special_form_quote($env, $args) {
+function lizp_special_form_quote($env, $args) {
     if (count($args) != 1) {
         throw new Exception("Syntax Error: (QUOTE <expr>)");
     }
@@ -202,7 +202,7 @@ function liphp_special_form_quote($env, $args) {
     return $args[0];
 }
 
-function liphp_special_form_quasiquote($env, $args) {
+function lizp_special_form_quasiquote($env, $args) {
     //echo "qq-IN: " . Expression::Render($args) . "\n";
 
     $nextUnquoted = FALSE;
@@ -222,7 +222,7 @@ function liphp_special_form_quasiquote($env, $args) {
         if ($nextUnquoted) {
             $i = $env->Evaluate($i);
         } elseif (is_array($i)) {
-            $i = liphp_special_form_quasiquote($env, $i);
+            $i = lizp_special_form_quasiquote($env, $i);
         }
 
         if ($expandNext && is_array($i)) {
@@ -239,7 +239,7 @@ function liphp_special_form_quasiquote($env, $args) {
     return $r;
 }
 
-function liphp_special_form_dump($env, $args) {
+function lizp_special_form_dump($env, $args) {
     foreach ($args as $arg) {
         echo Expression::Render($arg) . "\n";
     }

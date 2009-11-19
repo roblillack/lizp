@@ -97,7 +97,7 @@ class Lizp {
 
         if ($lambda instanceof Symbol) {
             // special forms (non-evaluated parameters)
-            $specialForm = "liphp_special_form_{$phpName}";
+            $specialForm = "lizp_special_form_{$phpName}";
             if (function_exists($specialForm)) {
                 return call_user_func($specialForm, $this, $args);
             }
@@ -141,7 +141,7 @@ class Lizp {
 
         if ($lambda instanceof Symbol) {
             // internal functions / php functions
-            $internalFn = "liphp_internal_fn_{$phpName}";
+            $internalFn = "lizp_internal_fn_{$phpName}";
             if (($isInternal = function_exists($internalFn)) ||
                 function_exists($phpName)) {
 
