@@ -252,3 +252,15 @@ function liphp_internal_fn_str($env, $args) {
 
     return implode('', $out);
 }
+
+function liphp_internal_fn_symbol_name($env, $args) {
+    if (count($args) != 1) {
+        throw new Exception("Syntax Error: (SYMBOL-NAME <symbol>)");
+    }
+
+    if (!($args[0] instanceof Symbol)) {
+        return NULL;
+    }
+
+    return $args[0]->name;
+}
