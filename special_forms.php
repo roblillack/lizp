@@ -73,7 +73,7 @@ function liphp_special_form_if($env, $args) {
 function liphp_special_form_unless($env, $args) {
     $r = NULL;
 
-    if ($env->Evaluate($args[0]) !== NULL) {
+    if (($r = $env->Evaluate($args[0])) !== NULL) {
         return $r;
     }
 
