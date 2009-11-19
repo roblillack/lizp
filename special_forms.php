@@ -202,30 +202,41 @@ function liphp_special_form_quote($env, $args) {
     return $args[0];
 }
 
-function liphp_special_form_quasiquote($env, $args, $noQuoting = FALSE) {
-    //echo "quasiquote: " . Expression::Render($args) . "\n";
+function liphp_special_form_quasiquote($env, $args) {
+    //echo "qq-IN: " . Expression::Render($args) . "\n";
 
-    $quoteSymbol = Symbol::Make('quote');
-    $content = array();
-    $nextUnquoted = $noQuoting;
+    $nextUnquoted = FALSE;
+    $expandNext = FALSE;
+    $r = array();
+
     foreach ($args as $i) {
+        if ($i instanceof AtSign) {
+            $expandNext = TRUE;
+            continue;
+        }
         if ($i instanceof Tilde) {
             $nextUnquoted = TRUE;
             continue;
         }
-        if ($i instanceof AtSign) {
-            $content []= $i;
-            continue;
+
+        if ($nextUnquoted) {
+            $i = $env->Evaluate($i);
+        } elseif (is_array($i)) {
+            $i = liphp_special_form_quasiquote($env, $i);
         }
-        if (is_array($i) && !$nextUnquoted) {
-            $i = liphp_special_form_quasiquote($env, $i, TRUE);
+
+        if ($expandNext && is_array($i)) {
+            $r = array_merge($r, $i);
+        } else {
+            $r []= $i;
         }
-        $content []= $nextUnquoted ? $i : array($quoteSymbol, $i);
-        $nextUnquoted = $noQuoting;
+
+        $nextUnquoted = FALSE;
+        $expandNext = FALSE;
     }
 
-    //echo "RETURN: " . Expression::Render($content) . "\n";
-    return $content;
+    //echo "qq-OUT: " . Expression::Render($r) . "\n";
+    return $r;
 }
 
 function liphp_special_form_dump($env, $args) {

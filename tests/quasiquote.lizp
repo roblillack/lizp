@@ -1,0 +1,16 @@
+; -*- mode: lisp -*-
+
+(defun make-list (&rest args)
+  (list @args))
+
+(defmacro avg (&rest list)
+  `(/ (+ ~@list) ~(length list)))
+
+(define my-list
+  (make-list 1 2 3 4 5))
+
+(print "LISTE: ")
+(p my-list)
+
+(println "avg 1-5: "
+         (avg 1 2 3 4 5))
