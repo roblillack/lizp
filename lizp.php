@@ -34,13 +34,10 @@ class Lizp {
         foreach ($args as $i => $arg) {
             if ($arg instanceof Symbol && $sexp->name == $arg->name) {
                 if (@$args[$i-1]->name == '&rest') {
-                    $vals = array();
-                    foreach (array_slice($values, $i - 1) as $v) {
-                        $vals []= $this->Evaluate($v);
-                    }
-                    return array(Symbol::Make('quote'), $vals);
+                    return array(Symbol::Make('quote'),
+                                 array_slice($values, $i - 1));
                 }
-                return $this->Evaluate($values[$i]);
+                return @$values[$i];
             }
         }
 
@@ -48,6 +45,7 @@ class Lizp {
     }
 
     public function Evaluate($sexp) {
+        //echo "EVAL: " . Expression::Render($sexp) . "\n";
         if ($sexp instanceof Symbol) {
             if (($r = @$this->environment[$sexp->name]) !== NULL) {
                 return $r === FALSE ? NULL : $r;
@@ -62,45 +60,81 @@ class Lizp {
             return NULL;
         }
 
-        $first = $sexp[0];
+        $lambda = $sexp[0];
         $args = array_slice($sexp, 1);
 
-        if (is_array($first)) {
-            $evald = $this->Evaluate($first);
-            //echo Expression::Render($first) . " ~~> " . Expression::Render($evald) . "\n";
-            $first = $evald;
+        if (is_array($lambda)) {
+            $evald = $this->Evaluate($lambda);
+            //echo Expression::Render($lambda) . " ~~> " . Expression::Render($evald) . "\n";
+            $lambda = $evald;
         }
 
-        if ($first instanceof Symbol) {
-            $phpName = ($in = @self::$_internalNames[$first->name]) === NULL ?
-                       str_replace('-', '_', $first->name) :
-                       $in;
+        if ($lambda instanceof Symbol &&
+            ($val = @$this->environment[$lambda->name]) !== NULL) {
+            $lambda = $val;
+        }
 
+        $phpName = NULL;
+        if ($lambda instanceof Symbol) {
+            $phpName = ($in = @self::$_internalNames[$lambda->name]) === NULL ?
+                       str_replace('-', '_', $lambda->name) :
+                       $in;
+        }
+
+
+        if ($lambda instanceof Macro) {
+            $list = NULL;
+            foreach ($lambda->expressions as $e) {
+                // macro-expansion-time
+                $applied = $lambda->arguments === NULL ? $e : $this->Apply($e, $lambda->arguments, $args);
+                //echo Expression::Render($e) . " =APPLY=> " . Expression::Render($applied) . "\n";
+                $expanded = $this->Evaluate($applied);
+                //echo Expression::Render($applied) . " =MACROEXPAND=> " . Expression::Render($expanded) . "\n";
+            }
+            return $this->Evaluate($expanded);
+        }
+
+        if ($lambda instanceof Symbol) {
             // special forms (non-evaluated parameters)
             $specialForm = "liphp_special_form_{$phpName}";
             if (function_exists($specialForm)) {
                 return call_user_func($specialForm, $this, $args);
             }
+        }
 
+        // We evaluate the parameters
+        $params = array();
+        $expandNext = FALSE;
+        foreach ($args as $v) {
+            if ($v instanceof AtSign) {
+                $expandNext = TRUE;
+                continue;
+            }
+            $r = $this->Evaluate($v);
+            if ($expandNext && is_array($r)) {
+                $params = array_merge($params, $r);
+            } else {
+                $params []= $r;
+            }
+            $expandNext = FALSE;
+        }
+
+        if ($lambda instanceof Lambda) {
+            $r = NULL;
+            foreach ($lambda->expressions as $e) {
+                $applied = $lambda->arguments === NULL ? $e : $this->Apply($e, $lambda->arguments, $params);
+                //echo Expression::Render($e) . " -APPLY-> " . Expression::Render($applied) . "\n";
+                $r = $this->Evaluate($applied);
+                //echo Expression::Render($applied) . " -EVAL-> " . Expression::Render($r) . "\n";
+            }
+            return $r;
+        }
+
+        if ($lambda instanceof Symbol) {
             // internal functions / php functions
             $internalFn = "liphp_internal_fn_{$phpName}";
             if (($isInternal = function_exists($internalFn)) ||
                 function_exists($phpName)) {
-                $params = array();
-                $expandNext = FALSE;
-                foreach ($args as $v) {
-                    if ($v instanceof AtSign) {
-                        $expandNext = TRUE;
-                        continue;
-                    }
-                    $r = $this->Evaluate($v);
-                    if ($expandNext && is_array($r)) {
-                        $params = array_merge($params, $r);
-                    } else {
-                        $params []= $r;
-                    }
-                    $expandNext = FALSE;
-                }
 
                 if ($isInternal) {
                     return call_user_func($internalFn, $this, $params);
@@ -112,42 +146,10 @@ class Lizp {
                 }
                 return $r;
             }
-
-            $lambda = @$this->environment[$first->name];
-        } else {
-            $lambda = $first;
         }
 
-        // it's macro expansion time!
-        if ($lambda instanceof Macro) {
-            $list = NULL;
-            foreach ($lambda->expressions as $e) {
-                // macro-expansion-time
-                $expanded = $this->Evaluate($e);
-                //echo Expression::Render($e) . " =MACROEXPAND=> " . Expression::Render($expanded) . "\n";
-                $applied = $lambda->arguments === NULL ? $expanded : $this->Apply($expanded, $lambda->arguments, $args);
-                //echo Expression::Render($expanded) . " =APPLY=> " . Expression::Render($applied) . "\n";
-                $list = array();
-                foreach ($applied as $i) {
-                    $list []= ($r = $this->Evaluate($i));
-                    //echo Expression::Render($i) . " =EVAL=> " . Expression::Render($r) . "\n";
-                }
-            }
-            return $this->Evaluate($list);
-        }
-
-        if (!($lambda instanceof Lambda)) {
-            throw new Exception("Unable to evaluate Expression: " . Expression::Render($sexp) .
-                                " because function name evaluates to " . Expression::Render($lambda));
-        }
-
-        $r = NULL;
-        foreach ($lambda->expressions as $e) {
-            $applied = $lambda->arguments === NULL ? $e : $this->Apply($e, $lambda->arguments, $args);
-            //echo Expression::Render($e) . " ==> " . Expression::Render($applied) . "\n";
-            $r = $this->Evaluate($applied);
-        }
-        return $r;
+        throw new Exception("Unable to evaluate Expression: " . Expression::Render($sexp) .
+                            " because function name evaluates to " . Expression::Render($lambda));
     }
 
     // Some Lizp functions need to get
