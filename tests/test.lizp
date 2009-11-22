@@ -36,16 +36,6 @@
 (blub)
 (println bla)
 
-(defun fib (n)
-  (if (eq? n 0) 1
-    (if (eq? n 1) 1
-      (+ (fib (- n 1))
-         (fib (- n 2))))))
-
-(print "fib: ")
-(p fib)
-(println (fib 10))
-
 (defun zehn () 10)
 (println (zehn))
 
