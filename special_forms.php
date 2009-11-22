@@ -134,7 +134,7 @@ function lizp_special_form_defun($env, $args) {
 
     $env->environment[$args[0]->name] = $lambda;
 
-    return Symbol::Make($args[0]->name);
+    return new Symbol($args[0]->name);
 }
 
 function lizp_special_form_defmacro($env, $args) {
@@ -147,7 +147,7 @@ function lizp_special_form_defmacro($env, $args) {
     $lambda->arguments = empty($args[1]) ? NULL : $args[1];
     $lambda->expressions = array_slice($args, 2);
     $env->environment[$args[0]->name] = $lambda;
-    return Symbol::Make($args[0]->name);
+    return new Symbol($args[0]->name);
 }
 
 function lizp_special_form_do($env, $args) {

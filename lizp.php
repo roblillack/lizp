@@ -1,49 +1,11 @@
 <?php
+@dl('lizp.so');
+
 require_once(dirname(__FILE__) . '/internal_functions.php');
 require_once(dirname(__FILE__) . '/special_forms.php');
 
 class Lizp {
     public $environment = array();
-
-    public function Apply($sexp, $args, $values) {
-        if (is_array($sexp)) {
-            $exps = array();
-            $expandNext = FALSE;
-            foreach ($sexp as $v) {
-                if ($v instanceof AtSign) {
-                    $expandNext = TRUE;
-                    continue;
-                }
-                $r = $this->Apply($v, $args, $values);
-                if ($expandNext && is_array($r) &&
-                    @$r[0] instanceof Symbol && $r[0]->name == 'quote' &&
-                    is_array(@$r[1])) {
-                    $exps = array_merge($exps, $r[1]);
-                } else {
-                    $exps []= $r;
-                }
-                $expandNext = FALSE;
-            }
-            return $exps;
-        }
-
-        if (!($sexp instanceof Symbol)) {
-            return $sexp;
-        }
-
-        foreach ($args as $i => $arg) {
-            if ($arg instanceof Symbol && $sexp->name == $arg->name) {
-                if (@$args[$i-1]->name == '&rest') {
-                    return array(Symbol::Make('quote'),
-                                 array_slice($values, $i - 1));
-                }
-                return is_array(@$values[$i]) ?
-                    array(Symbol::Make('quote'), @$values[$i]) : @$values[$i];
-            }
-        }
-
-        return $sexp;
-    }
 
     public function Evaluate($sexp) {
         //echo "EVAL: " . Expression::Render($sexp) . "\n";
@@ -87,7 +49,7 @@ class Lizp {
             $list = NULL;
             foreach ($lambda->expressions as $e) {
                 // macro-expansion-time
-                $applied = $lambda->arguments === NULL ? $e : $this->Apply($e, $lambda->arguments, $args);
+                $applied = $lambda->arguments === NULL ? $e : lizp_apply($e, $lambda->arguments, $args);
                 //echo Expression::Render($e) . " =APPLY=> " . Expression::Render($applied) . "\n";
                 $expanded = $this->Evaluate($applied);
                 //echo Expression::Render($applied) . " =MACROEXPAND=> " . Expression::Render($expanded) . "\n";
@@ -126,12 +88,12 @@ class Lizp {
                 $args = array();
                 foreach ($params as $i) {
                     if (is_array($i)) {
-                        $i = array(Symbol::Make('quote'), $i);
+                        $i = array(new Symbol('quote'), $i);
                     }
                     $args []= $i;
                 }
                 //$params = $args;
-                $applied = $lambda->arguments === NULL ? $e : $this->Apply($e, $lambda->arguments, $params);
+                $applied = $lambda->arguments === NULL ? $e : lizp_apply($e, $lambda->arguments, $params);
                 //echo Expression::Render($e) . " -APPLY-> " . Expression::Render($applied) . "\n";
                 $r = $this->Evaluate($applied);
                 //echo Expression::Render($applied) . " -EVAL-> " . Expression::Render($r) . "\n";
@@ -241,8 +203,8 @@ class Expression {
         $didClose = FALSE;
 
         $qStack = array();
-        $qSymbol = Symbol::Make('quote');
-        $qqSymbol = Symbol::Make('quasiquote');
+        $qSymbol = new Symbol('quote');
+        $qqSymbol = new Symbol('quasiquote');
 
         $append = FALSE;
 
@@ -350,8 +312,7 @@ class Expression {
                 } elseif ($supper == 'NIL') {
                     $append = NULL;
                 } else {
-                    $symbol = new Symbol;
-                    $symbol->name = $sname;
+                    $symbol = new Symbol($sname);
                     $append = $symbol;
                 }
 
@@ -375,27 +336,69 @@ class Lambda extends Expression {
     public $expressions = array();
 }
 
-class Symbol extends Expression {
-    public $name = NULL;
-
-    public static function Make($name) {
-        $r = new self;
-        $r->name = $name;
-        return $r;
-    }
-}
-
-class Tilde extends Expression {}
-class AtSign extends Expression {}
 class Macro extends Expression {
     public $arguments = NULL;
     public $expressions = array();
 }
 
-if ($_SERVER['argc'] < 2) {
-    echo "syntax: {$_SERVER['argv'][0]} FILE\n";
-    exit(1);
+if (!function_exists('lizp_apply')) {
+
+class Symbol extends Expression {
+    public $name = NULL;
+
+    public function __construct($n) {
+        $this->name = $n;
+    }
 }
+
+class Tilde extends Expression {}
+class AtSign extends Expression {}
+
+function lizp_apply($sexp, $args, $values) {
+    if (is_array($sexp)) {
+        $exps = array();
+        $expandNext = FALSE;
+        foreach ($sexp as $v) {
+            if ($v instanceof AtSign) {
+                $expandNext = TRUE;
+                continue;
+            }
+            $r = lizp_apply($v, $args, $values);
+            if ($expandNext && is_array($r) &&
+                @$r[0] instanceof Symbol && $r[0]->name == 'quote' &&
+                is_array(@$r[1])) {
+                $exps = array_merge($exps, $r[1]);
+            } else {
+                $exps []= $r;
+            }
+            $expandNext = FALSE;
+        }
+        return $exps;
+    }
+
+    if (!($sexp instanceof Symbol)) {
+        return $sexp;
+    }
+
+    foreach ($args as $i => $arg) {
+        if ($arg instanceof Symbol && $sexp->name == $arg->name) {
+            if (@$args[$i-1]->name == '&rest') {
+                return array(new Symbol('quote'),
+                             array_slice($values, $i - 1));
+            }
+            return is_array(@$values[$i]) ?
+                array(new Symbol('quote'), @$values[$i]) : @$values[$i];
+        }
+    }
+
+    return $sexp;
+}
+}
+
+//if ($_SERVER['argc'] < 2) {
+//   echo "syntax: {$_SERVER['argv'][0]} FILE\n";
+//    exit(1);
+//}
 
 $start = microtime(TRUE);
 $input = file_get_contents($_SERVER['argv'][1]);
