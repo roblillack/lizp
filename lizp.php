@@ -8,7 +8,10 @@ class Lizp {
     public $environment = array();
 
     public function Evaluate($sexp) {
-        //echo "EVAL: " . Expression::Render($sexp) . "\n";
+        echo "LIZP_EVAL: " . Expression::Render($sexp) . "\n";
+        $eval_r = lizp_eval($sexp, $this->environment);
+        echo "RETURN: " . Expression::Render($eval_r) . "\n";
+
         if ($sexp instanceof Symbol) {
             if (($r = @$this->environment[$sexp->name]) !== NULL) {
                 return $r === FALSE ? NULL : $r;
@@ -400,16 +403,19 @@ function lizp_apply($sexp, $args, $values) {
 //    exit(1);
 //}
 
-$start = microtime(TRUE);
-$input = file_get_contents($_SERVER['argv'][1]);
-$expressions = Expression::Parse($input);
-//echo "parsed {$_SERVER['argv'][1]} in " . number_format(microtime(TRUE)-$start, 4) . "s\n";
-$env = new Lizp();
+$cmd = @$_SERVER['argv'][1];
+if (is_readable($cmd)) {
+    $start = microtime(TRUE);
+    $input = file_get_contents($cmd);
+    $expressions = Expression::Parse($input);
+    //echo "parsed {$_SERVER['argv'][1]} in " . number_format(microtime(TRUE)-$start, 4) . "s\n";
+    $env = new Lizp();
 
-$start = microtime(TRUE);
+    $start = microtime(TRUE);
 
-foreach ($expressions as $expr) {
-    $env->Evaluate($expr);
+    foreach ($expressions as $expr) {
+        $env->Evaluate($expr);
+    }
+
+    //echo "executed {$_SERVER['argv'][1]} in " . number_format(microtime(TRUE)-$start, 4) . "s\n";
 }
-
-//echo "executed {$_SERVER['argv'][1]} in " . number_format(microtime(TRUE)-$start, 4) . "s\n";
