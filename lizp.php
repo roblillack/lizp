@@ -392,21 +392,24 @@ class Macro extends Expression {
     public $expressions = array();
 }
 
-if ($_SERVER['argc'] < 2) {
+/*if ($_SERVER['argc'] < 2) {
     echo "syntax: {$_SERVER['argv'][0]} FILE\n";
     exit(1);
+}*/
+
+$cmd = @$_SERVER['argv'][1];
+if (is_readable($cmd)) {
+    $start = microtime(TRUE);
+    $input = file_get_contents($cmd);
+    $expressions = Expression::Parse($input);
+    //echo "parsed {$_SERVER['argv'][1]} in " . number_format(microtime(TRUE)-$start, 4) . "s\n";
+    $env = new Lizp();
+
+    $start = microtime(TRUE);
+
+    foreach ($expressions as $expr) {
+        $env->Evaluate($expr);
+    }
+
+    //echo "executed {$_SERVER['argv'][1]} in " . number_format(microtime(TRUE)-$start, 4) . "s\n";
 }
-
-$start = microtime(TRUE);
-$input = file_get_contents($_SERVER['argv'][1]);
-$expressions = Expression::Parse($input);
-//echo "parsed {$_SERVER['argv'][1]} in " . number_format(microtime(TRUE)-$start, 4) . "s\n";
-$env = new Lizp();
-
-$start = microtime(TRUE);
-
-foreach ($expressions as $expr) {
-    $env->Evaluate($expr);
-}
-
-//echo "executed {$_SERVER['argv'][1]} in " . number_format(microtime(TRUE)-$start, 4) . "s\n";
