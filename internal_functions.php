@@ -236,6 +236,17 @@ function lizp_internal_fn_not($env, $args) {
     return TRUE;
 }
 
+function lizp_internal_fn_nth($env, $args) {
+    if (count($args) !== 2 ||
+        !is_int($args[0]) ||
+        (!is_array($args[1]) && $args[1] !== NULL)) {
+        throw new Exception("syntax: (NTH <pos> <list>)");
+    }
+
+    $r = @$args[1][$args[0]];
+    return ($r === FALSE || (is_array($r) && empty($r))) ? NULL : $r;
+}
+
 function lizp_internal_fn_reduce($env, $args) {
     if (count($args) < 2 || count($args) > 3 ||
         !($args[0] instanceof Lambda || $args[0] instanceof Symbol) ||
