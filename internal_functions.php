@@ -193,6 +193,24 @@ function lizp_internal_fn_parse($env, $args) {
     return @$expr[0];
 }
 
+function lizp_internal_fn_make_list($env, $args) {
+    $r = array();
+    $size = (int)@$args[0];
+
+    if (@$args[1] instanceof Lambda ||
+        @$args[1] instanceof Symbol) {
+        for ($i = 0; $i < $size; $i++) {
+            $r []= $env->Evaluate(array($args[1], $i));
+        }
+    } else {
+        while ($size--) {
+            $r []= NULL;
+        }
+    }
+
+    return empty($r) ? NULL : $r;
+}
+
 function lizp_internal_fn_map($env, $args) {
     if (count($args) !== 2 ||
         !($args[0] instanceof Lambda || $args[0] instanceof Symbol) ||
