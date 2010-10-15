@@ -5,8 +5,8 @@
 
   (defun readline (prompt)
     (print prompt)
-    (define fp (fopen "php://stdin" "r"))
-    (rtrim (fgets fp 1024)))
+    (let ((fp (fopen "php://stdin" "r")))
+      (rtrim (fgets fp 1024))))
 
   (defun readline-add-history (line)))
 
