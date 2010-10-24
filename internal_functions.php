@@ -219,8 +219,10 @@ function lizp_internal_fn_map($env, $args) {
     }
 
     $r = array();
-    foreach ((array) $args[1] as $i) {
-        $r []= $env->Evaluate(array($args[0], (array(Symbol::Make('quote'), $i))));
+    foreach ((array) $args[1] as $i => $v) {
+        $r []= $env->Evaluate(array($args[0],
+                array(Symbol::Make('quote'), $v),
+                array(Symbol::Make('quote'), $i)));
     }
 
     return empty($r) ? NULL : $r;
