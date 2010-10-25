@@ -1,32 +1,141 @@
 <?php
 require_once(dirname(__FILE__) . '/lizp.php');
 
+class CompiledExpression {
+    public $sexp;
+
+    public function __construct($e) {
+        $this->sexp = $e;
+    }
+
+    public function Emit() {
+        return LizpCompiler::EmitExpression($this->sexp);
+    }
+}
+
+class StringExpression extends CompiledExpression {
+    public $str;
+
+    public function __construct($str) {
+        $this->str = $str;
+    }
+
+    public function Emit() {
+        return $this->str;
+    }
+}
+
+class ReturnCE extends CompiledExpression {
+    public $compiledExpression;
+
+    public function __construct($e) {
+        $this->compiledExpression = $e;
+    }
+
+    public function Emit() {
+        return "\$r = " . $this->compiledExpression->Emit();
+    }
+}
+
+class LoadCE extends CompiledExpression {
+    public $name;
+    public $compiledExpression;
+
+    public function __construct($n, $e = null) {
+        $this->name = $n;
+        $this->compiledExpression = $e;
+    }
+
+    public function Emit() {
+        if ($this->compiledExpression == null) {
+            return "\${$this->name} = \$r";
+        } else {
+            return "\${$this->name} = " . $this->compiledExpression->Emit();
+        }
+    }
+}
+
+class FunctionCallCE extends CompiledExpression {
+    public $name;
+    public $params;
+
+    public function __construct($n, $p) {
+        $this->name = $n;
+        $this->params = $p;
+    }
+
+    public function Emit() {
+        $ptxts = array();
+        foreach ($this->params as $p) {
+            if ($p instanceof CompiledExpression) {
+                $ptxts []= $p->Emit();
+            } else {
+                $ptxts []= "\${$p}";
+            }
+        }
+        return "{$this->name}(" . implode(', ', $ptxts) . ")";
+    }
+}
+
 class LizpCompiler {
     public $environment = array();
     private $_asm = NULL;
 
-    private function Emit($str) {
+    private function Emit($e) {
         if ($this->_asm === NULL) {
             $this->_asm = array();
-            $this->_asm []= '<?php';
-            $this->_asm []= 'require_once("lizp.php");';
-            $this->_asm []= '$env = new Lizp();';
+            $this->_asm []= new StringExpression('<?php');
+            $this->_asm []= new StringExpression('require_once("lizp.php");');
+            $this->_asm []= new StringExpression('$env = new Lizp();');
         }
-        $this->_asm []= $str;
+        $this->_asm []= $e;
     }
 
     public function GetAsm() {
-        return implode("\n", $this->_asm);
+        $txt = array();
+        foreach ($this->_asm as $ce) {
+            if ($ce === NULL) {
+                continue;
+            }
+            if ($ce instanceof StringExpression) {
+                $txt []= $ce->Emit();
+            } else {
+                $txt []= $ce->Emit() . ";";
+            }
+        }
+        return implode("\n", $txt);
+    }
+
+    public function Optimize() {
+        for ($i = 0; $i < count($this->_asm); $i++) {
+            if ($this->_asm[$i] === NULL) {
+                continue;
+            }
+
+            if ($this->_asm[$i] instanceof ReturnCE &&
+                @$this->_asm[$i+1] instanceof LoadCE &&
+                $this->_asm[$i+1]->compiledExpression === NULL) {
+                $this->_asm[$i] = new LoadCE($this->_asm[$i+1]->name, $this->_asm[$i]->compiledExpression);
+                $this->_asm[$i+1] = NULL;
+                continue;
+            }
+
+            if ($this->_asm[$i] instanceof ReturnCE &&
+                @$this->_asm[$i+1] instanceof ReturnCE) {
+                $this->_asm[$i] = $this->_asm[$i]->compiledExpression;
+                continue;
+            }
+        }
     }
 
     public function Compile($sexp) {
-        $this->Emit("// " . Expression::Render($sexp));
+        //$this->Emit(new StringExpression("// " . Expression::Render($sexp)));
 
         if ($sexp instanceof Symbol) {
-            $this->Emit("\$r = @\$env->environment['" . addslashes($sexp->name) . "'];");
+            $this->Emit(new ReturnCE(new StringExpression("@\$env->environment['" . addslashes($sexp->name) . "'];")));
             return;
         } elseif (!is_array($sexp)) {
-            $this->Emit('$r = ' . LizpCompiler::EmitExpression($sexp) . ';');
+            $this->Emit(new ReturnCE(new CompiledExpression($sexp)));
             return;
         }
 
@@ -68,12 +177,13 @@ class LizpCompiler {
             // special forms (non-evaluated parameters)
             $specialForm = "lizp_special_form_{$phpName}";
             if (function_exists($specialForm)) {
-                $this->Emit("\$r = $specialForm(\$env, " . LizpCompiler::EmitExpression($args) . ");");
+                $this->Emit(new ReturnCE(new FunctionCallCE($specialForm, array("env", new CompiledExpression($args)))));
                 return;
             }
         }
 
         // We evaluate the parameters
+        $paramNames = array();
         $params = array();
         $expandNext = FALSE;
         $rand = rand(1, 1000000);
@@ -83,11 +193,12 @@ class LizpCompiler {
                 continue;
             }
             $this->Compile($v);
-            $this->Emit("\$param_{$rand}_$i = \$r;");
+            $this->Emit(new LoadCE("param_{$rand}_{$i}"));
             if ($expandNext && is_array($r)) {
                 $params = array_merge($params, $r);
             } else {
-                $params []= "\$param_{$rand}_$i"; //r;
+                $params []= "\$param_{$rand}_{$i}"; //r;
+                $paramNames []= "param_{$rand}_{$i}"; //r;
             }
             $expandNext = FALSE;
         }
@@ -119,14 +230,12 @@ class LizpCompiler {
                 function_exists($phpName)) {
 
                 if ($isInternal) {
-                    $this->Emit("\$r = $internalFn(\$env, array(" . implode(', ', $params) . "));");
+                    $this->Emit(new ReturnCE(new FunctionCallCE($internalFn, array("env", new StringExpression("array(" . implode(', ', $params) . ")")))));
                     return;
                 }
 
-                $this->Emit("\$r = $phpName(" . implode(', ', $params) . ");");
-                $this->Emit('if (is_array($r) && count($r) == 0) {');
-                $this->Emit('    $r = NULL;');
-                $this->Emit('}');
+                $this->Emit(new ReturnCE(new FunctionCallCE($phpName, $paramNames)));
+                $this->Emit(new StringExpression('if (is_array($r) && count($r) == 0) $r = NULL;'));
                 return;
             }
         }
@@ -216,6 +325,8 @@ if (is_readable($cmd)) {
     }
 
     $outfile = preg_replace('/\.lizp$/', '.php', $cmd);
+
+    $compiler->Optimize();
 
     file_put_contents($outfile, $compiler->GetAsm() . "\n");
 
